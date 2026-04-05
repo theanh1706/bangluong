@@ -3,199 +3,197 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bảng lương PRO</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<link rel="manifest" href="manifest.json">
+<title>Bảng lương PRO FINAL</title>
+
 <style>
 :root{
- --bg:#111;
- --card:#1e1e1e;
- --text:#fff;
- --input:#2a2a2a;
+ --bg:#0f172a;
+ --card:#1e293b;
+ --text:#f1f5f9;
+ --input:#334155;
 }
-.light{
- --bg:#f4f6f9;
- --card:#fff;
- --text:#000;
- --input:#fff;
-}
-body{font-family:Inter;margin:0;padding:20px;background:var(--bg);color:var(--text)}
-.container{max-width:1000px;margin:auto}
-.card{background:var(--card);padding:15px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.2);margin-bottom:15px}
-h2{text-align:center}
-table{border-collapse:collapse;width:100%}
-td,th{border:1px solid #555;padding:6px;text-align:center}
-input{width:100%;padding:6px;border-radius:6px;border:1px solid #555;background:var(--input);color:var(--text)}
-.work{background:#22c55e;color:#fff}
-.today{background:#facc15;color:#000}
-.sunday{background:#333;color:#888}
-.header{background:#000;color:#fff}
-.btn{padding:10px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
-.toggle{float:right;margin-bottom:10px}
+
+body{margin:0;background:var(--bg);color:var(--text);font-family:sans-serif}
+.container{max-width:500px;margin:auto;padding:10px}
+
+.card{background:var(--card);padding:10px;border-radius:12px;margin-bottom:10px}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+input{padding:10px;border-radius:10px;border:none;background:var(--input);color:#fff;width:100%}
+
+.notice{background:#2563eb;padding:8px;border-radius:8px;text-align:center;font-size:13px}
+
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155}
+
+.header{background:#000}
+.work{background:#16a34a}
+.off{background:#475569}
+.future{opacity:0.3}
+.today{outline:2px solid yellow}
+
+.result{font-size:14px;line-height:1.6}
 </style>
 </head>
+
 <body>
 <div class="container">
-<button class="btn toggle" onclick="toggleTheme()">🌙 / ☀️</button>
-<h2>BẢNG CHẤM CÔNG PRO</h2>
+
+<h2>📊 Bảng lương PRO</h2>
+
+<div class="notice" id="notice"></div>
 
 <div class="card grid">
-<div>Tên<input id="name" value="Thế Anh"></div>
-<div>Lương cơ bản<input id="base" value="9000" onchange="saveSalary()"></div>
-<div>Phụ cấp/ngày<input id="allow" value="39" onchange="saveAllow()"></div>
-<div>Ứng lương<input id="advance" value="0" onchange="saveAdvance()"></div>
+<input id="name" placeholder="Tên">
+<input id="base" placeholder="Lương">
+<input id="allow" placeholder="Phụ cấp/ngày">
+<input id="advance" placeholder="Ứng lương">
 </div>
 
 <div class="card">
-<select id="monthSelect" onchange="changeMonth()"></select>
+<div id="monthTitle" style="text-align:center;margin-bottom:5px"></div>
+<div id="calendar" class="calendar"></div>
 </div>
 
-<div class="card">
-<table id="calendar"></table>
-</div>
+<div class="card result" id="result"></div>
 
-<div class="card">
-<h3 id="result"></h3>
-</div>
-
-<div style="text-align:center">
-<button class="btn" onclick="clearToday()">Nghỉ hôm nay</button>
-</div>
 </div>
 
 <script>
 let now=new Date();
 let year=now.getFullYear();
 let month=now.getMonth();
+let today=now.getDate();
 
-function toggleTheme(){
- document.body.classList.toggle('light');
- localStorage.setItem('theme',document.body.classList.contains('light')?'light':'dark');
+let startX=0;
+
+// 👉 lưu theo tháng
+function key(k){return `${k}_${year}_${month}`}
+
+// 👉 load dữ liệu tháng
+function loadData(){
+ base.value=localStorage.getItem(key('base'))||'';
+ allow.value=localStorage.getItem(key('allow'))||'';
+ advance.value=localStorage.getItem(key('adv'))||'';
 }
 
-(function initTheme(){
- let t=localStorage.getItem('theme')||'dark';
- if(t==='light') document.body.classList.add('light');
-})();
-
-function key(){return `salary_${year}_${month}`}
-function keyAllow(){return `allow_${year}_${month}`}
-function keyAdvance(){return `advance_${year}_${month}`}
-
-function saveSalary(){localStorage.setItem(key(),base.value);calc()}
-function saveAllow(){localStorage.setItem(keyAllow(),allow.value);calc()}
-function saveAdvance(){localStorage.setItem(keyAdvance(),advance.value);calc()}
-
-function loadAll(){
- base.value=localStorage.getItem(key())||9000;
- allow.value=localStorage.getItem(keyAllow())||39;
- advance.value=localStorage.getItem(keyAdvance())||0;
-}
-
-function changeMonth(){
- month=+monthSelect.value;
- loadAll();
- render();calc();
-}
-
-function initMonths(){
- for(let i=0;i<12;i++){
-  let op=document.createElement('option');
-  op.value=i;
-  op.innerText=`Tháng ${i+1}`;
-  if(i===month) op.selected=true;
-  monthSelect.appendChild(op);
- }
-}
+// 👉 save
+base.oninput=()=>localStorage.setItem(key('base'),base.value)
+allow.oninput=()=>localStorage.setItem(key('allow'),allow.value)
+advance.oninput=()=>localStorage.setItem(key('adv'),advance.value)
 
 function isSunday(d){return new Date(year,month,d).getDay()===0}
+function notify(t){notice.innerText=t}
 
+// 👉 tính lương
 function calc(){
- let baseVal=+base.value;
- let allowVal=+allow.value;
- let adv=+advance.value;
+ let baseVal=+base.value||0;
+ let allowVal=+allow.value||0;
+ let adv=+advance.value||0;
+
  let days=new Date(year,month+1,0).getDate();
 
- let daySalary=Math.round(baseVal/26);
- let hourSalary=Math.round(daySalary/8);
+ let daySalary=Math.round(baseVal/26)||0;
+ let hourSalary=Math.round(daySalary/8)||0;
 
- let workDays=0, otHours=0;
+ let work=0, off=0, ot=0;
+
  for(let i=1;i<=days;i++){
-  if(localStorage.getItem(`d${month}_${i}`)&&!isSunday(i)) workDays++;
-  otHours+=(+localStorage.getItem(`ot${month}_${i}`)||0);
+  if(i>today) continue;
+  if(isSunday(i)) continue;
+
+  if(localStorage.getItem(key(`off_${i}`))) off++;
+  else work++;
+
+  ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
  }
 
- let bonus = workDays>=26 ? 200000 : 0;
+ let bonus = work>=26 ? 200000 : 0;
 
- let total=workDays*daySalary + workDays*allowVal + otHours*hourSalary*1.5 + bonus - adv;
+ let total = work*daySalary + work*allowVal + ot*hourSalary*1.5 + bonus - adv;
 
- let f=n=>n.toLocaleString('vi-VN');
  result.innerHTML=`
- Ngày công: ${workDays}<br>
- OT: ${otHours}h<br>
- Thưởng: ${f(bonus)}<br>
- Ứng: -${f(adv)}<br>
- <hr>
- TỔNG: <b style="color:#22c55e">${f(total)}</b>`;
+ Công: ${work} | Nghỉ: ${off}<br>
+ OT: ${ot}h<br>
+ Thưởng: ${bonus.toLocaleString()}<br>
+ Ứng: -${adv.toLocaleString()}<br>
+ <b style="color:#22c55e;font-size:18px">${total.toLocaleString()}đ</b>
+ `;
+
+ if(!base.value) notify('⚠️ Nhập lương');
+ else if(!allow.value) notify('⚠️ Nhập phụ cấp');
+ else if(!localStorage.getItem(key(`ot_${today}`))) notify('⏰ Chưa nhập OT hôm nay');
+ else notify('✅ OK');
 }
 
+// 👉 render lịch
 function render(){
  calendar.innerHTML='';
  let days=new Date(year,month+1,0).getDate();
 
- let header=document.createElement('tr');
- ['CN','T2','T3','T4','T5','T6','T7'].forEach(d=>{
-  let th=document.createElement('th');th.innerText=d;th.className='header';header.appendChild(th);
- });
- calendar.appendChild(header);
+ monthTitle.innerText=`Tháng ${month+1}/${year}`;
 
- let row=document.createElement('tr');
+ ['CN','T2','T3','T4','T5','T6','T7'].forEach(d=>{
+  let h=document.createElement('div');
+  h.innerText=d;
+  h.className='day header';
+  calendar.appendChild(h);
+ });
+
  let first=new Date(year,month,1).getDay();
- for(let i=0;i<first;i++) row.appendChild(document.createElement('td'));
+ for(let i=0;i<first;i++) calendar.appendChild(document.createElement('div'));
 
  for(let i=1;i<=days;i++){
-  let td=document.createElement('td');
-  td.innerHTML=`${i}<br><input value="${localStorage.getItem(`ot${month}_${i}`)||''}" placeholder="OT">`;
+  let div=document.createElement('div');
+  div.className='day';
 
-  let input=td.querySelector('input');
-  input.onchange=e=>{
-   localStorage.setItem(`ot${month}_${i}`,e.target.value);
+  let isOff=localStorage.getItem(key(`off_${i}`));
+
+  div.innerHTML=`${i}<br><input placeholder="OT" value="${localStorage.getItem(key(`ot_${i}`))||''}">`;
+
+  if(i>today) div.classList.add('future');
+  else if(isSunday(i)) div.classList.add('future');
+  else if(isOff) div.classList.add('off');
+  else div.classList.add('work');
+
+  if(i===today) div.classList.add('today');
+
+  let input=div.querySelector('input');
+
+  input.oninput=e=>{
+   localStorage.setItem(key(`ot_${i}`),e.target.value);
    calc();
   };
 
-  if(isSunday(i)) td.classList.add('sunday');
-  if(localStorage.getItem(`d${month}_${i}`)) td.classList.add('work');
+  div.onclick=e=>{
+   if(e.target===input||i>today||isSunday(i)) return;
 
-  td.onclick=e=>{
-   if(e.target===input||isSunday(i)) return;
-   let k=`d${month}_${i}`;
-   localStorage.getItem(k)?localStorage.removeItem(k):localStorage.setItem(k,1);
+   let k=key(`off_${i}`);
+   if(localStorage.getItem(k)) localStorage.removeItem(k);
+   else localStorage.setItem(k,1);
+
    render();calc();
   };
 
-  row.appendChild(td);
-  if(row.children.length%7===0){calendar.appendChild(row);row=document.createElement('tr');}
+  calendar.appendChild(div);
  }
- calendar.appendChild(row);
 }
 
-function clearToday(){
- let d=new Date().getDate();
- localStorage.removeItem(`d${month}_${d}`);
- localStorage.removeItem(`ot${month}_${d}`);
- render();calc();
-}
+// 👉 vuốt đổi tháng
+document.body.addEventListener('touchstart',e=>startX=e.touches[0].clientX);
+document.body.addEventListener('touchend',e=>{
+ let endX=e.changedTouches[0].clientX;
 
-initMonths();
-loadAll();
+ if(startX-endX>50){month++; if(month>11){month=0;year++}}
+ if(endX-startX>50){month--; if(month<0){month=11;year--}}
+
+ loadData();render();calc();
+});
+
+loadData();
 render();
 calc();
 </script>
- <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
-</script>
+
 </body>
 </html>
