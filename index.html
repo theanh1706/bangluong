@@ -3,132 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f172a">
 <title>Bảng lương PRO FINAL</title>
 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f172a">
+
 <style>
-:root{
- --bg:#0f172a;
- --card:#1e293b;
- --text:#f1f5f9;
- --input:#334155;
-}
-
-body{margin:0;background:var(--bg);color:var(--text);font-family:sans-serif}
+body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .container{max-width:500px;margin:auto;padding:10px}
-
-.card{background:var(--card);padding:10px;border-radius:12px;margin-bottom:10px}
-
+.card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-input{padding:10px;border-radius:10px;border:none;background:var(--input);color:#fff;width:100%}
-
+input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
 .notice{background:#2563eb;padding:8px;border-radius:8px;text-align:center;font-size:13px}
-
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155}
-
 .header{background:#000}
 .work{background:#16a34a}
 .off{background:#475569}
+.half{background:#f59e0b}
 .future{opacity:0.3}
 .today{outline:2px solid yellow}
-
-.result{font-size:14px;line-height:1.6}
 </style>
 </head>
 
 <body>
 <div class="container">
-
-<h2>📊 Bảng lương PRO</h2>
+<h2 id="title">📊 Bảng lương</h2>
 
 <div class="notice" id="notice"></div>
 
 <div class="card grid">
 <input id="name" placeholder="Tên">
-<input id="base" placeholder="Lương">
-<input id="allow" placeholder="Phụ cấp/ngày">
-<input id="advance" placeholder="Ứng lương">
+<input id="base" type="number" placeholder="Lương">
+<input id="allow" type="number" placeholder="Phụ cấp/ngày">
+<input id="advance" type="number" placeholder="Ứng lương">
 </div>
 
 <div class="card">
-<div id="monthTitle" style="text-align:center;margin-bottom:5px"></div>
+<div id="monthTitle" style="text-align:center"></div>
 <div id="calendar" class="calendar"></div>
 </div>
 
-<div class="card result" id="result"></div>
-
+<div class="card" id="result"></div>
 </div>
 
 <script>
+// bind elements
+const name = document.getElementById('name');
+const base = document.getElementById('base');
+const allow = document.getElementById('allow');
+const advance = document.getElementById('advance');
+const calendar = document.getElementById('calendar');
+const result = document.getElementById('result');
+const monthTitle = document.getElementById('monthTitle');
+const title = document.getElementById('title');
 let now=new Date();
 let year=now.getFullYear();
 let month=now.getMonth();
 let today=now.getDate();
 
-let startX=0;
-
-// 👉 lưu theo tháng
 function key(k){return `${k}_${year}_${month}`}
 
-// 👉 load dữ liệu tháng
+// ===== LOAD =====
 function loadData(){
- base.value=localStorage.getItem(key('base'))||'';
- allow.value=localStorage.getItem(key('allow'))||'';
- advance.value=localStorage.getItem(key('adv'))||'';
+ name.value = localStorage.getItem('name_global') || '';
+ base.value = localStorage.getItem(key('base')) || '';
+ allow.value = localStorage.getItem(key('allow')) || '';
+ advance.value = localStorage.getItem(key('adv')) || '';
+ updateTitle();
 }
 
-// 👉 save
+// ===== SAVE =====
+name.oninput = ()=>{
+ localStorage.setItem('name_global',name.value);
+ updateTitle();
+}
 base.oninput=()=>localStorage.setItem(key('base'),base.value)
 allow.oninput=()=>localStorage.setItem(key('allow'),allow.value)
 advance.oninput=()=>localStorage.setItem(key('adv'),advance.value)
 
-function isSunday(d){return new Date(year,month,d).getDay()===0}
-function notify(t){notice.innerText=t}
+function updateTitle(){
+ if(name.value) title.innerText = "📊 " + name.value;
+ else title.innerText = "📊 Bảng lương";
+}
 
-// 👉 tính lương
+function isSunday(d){return new Date(year,month,d).getDay()===0}
+
 function calc(){
  let baseVal=+base.value||0;
  let allowVal=+allow.value||0;
  let adv=+advance.value||0;
-
  let days=new Date(year,month+1,0).getDate();
 
  let daySalary=Math.round(baseVal/26)||0;
  let hourSalary=Math.round(daySalary/8)||0;
 
- let work=0, off=0, ot=0;
+ let work=0, ot=0;
 
  for(let i=1;i<=days;i++){
   if(i>today) continue;
   if(isSunday(i)) continue;
 
-  if(localStorage.getItem(key(`off_${i}`))) off++;
+  let status=localStorage.getItem(key(`status_${i}`));
+
+  if(status==='off'){}
+  else if(status==='half') work+=0.5;
   else work++;
 
   ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
  }
 
  let bonus = work>=26 ? 200000 : 0;
-
  let total = work*daySalary + work*allowVal + ot*hourSalary*1.5 + bonus - adv;
 
  result.innerHTML=`
- Công: ${work} | Nghỉ: ${off}<br>
+ Công: ${work}<br>
  OT: ${ot}h<br>
  Thưởng: ${bonus.toLocaleString()}<br>
  Ứng: -${adv.toLocaleString()}<br>
  <b style="color:#22c55e;font-size:18px">${total.toLocaleString()}đ</b>
  `;
-
- if(!base.value) notify('⚠️ Nhập lương');
- else if(!allow.value) notify('⚠️ Nhập phụ cấp');
- else if(!localStorage.getItem(key(`ot_${today}`))) notify('⏰ Chưa nhập OT hôm nay');
- else notify('✅ OK');
 }
 
-// 👉 render lịch
 function render(){
  calendar.innerHTML='';
  let days=new Date(year,month+1,0).getDate();
@@ -149,19 +145,18 @@ function render(){
   let div=document.createElement('div');
   div.className='day';
 
-  let isOff=localStorage.getItem(key(`off_${i}`));
+  let status=localStorage.getItem(key(`status_${i}`));
 
-  div.innerHTML=`${i}<br><input placeholder="OT" value="${localStorage.getItem(key(`ot_${i}`))||''}">`;
+  div.innerHTML=`${i}<br><input type="number" placeholder="OT" value="${localStorage.getItem(key(`ot_${i}`))||''}">`;
 
-  if(i>today) div.classList.add('future');
-  else if(isSunday(i)) div.classList.add('future');
-  else if(isOff) div.classList.add('off');
+  if(i>today || isSunday(i)) div.classList.add('future');
+  else if(status==='off') div.classList.add('off');
+  else if(status==='half') div.classList.add('half');
   else div.classList.add('work');
 
   if(i===today) div.classList.add('today');
 
   let input=div.querySelector('input');
-
   input.oninput=e=>{
    localStorage.setItem(key(`ot_${i}`),e.target.value);
    calc();
@@ -170,9 +165,11 @@ function render(){
   div.onclick=e=>{
    if(e.target===input||i>today||isSunday(i)) return;
 
-   let k=key(`off_${i}`);
-   if(localStorage.getItem(k)) localStorage.removeItem(k);
-   else localStorage.setItem(k,1);
+   let cur=localStorage.getItem(key(`status_${i}`));
+
+   if(!cur) localStorage.setItem(key(`status_${i}`),'half');
+   else if(cur==='half') localStorage.setItem(key(`status_${i}`),'off');
+   else localStorage.removeItem(key(`status_${i}`));
 
    render();calc();
   };
@@ -181,25 +178,13 @@ function render(){
  }
 }
 
-// 👉 vuốt đổi tháng
-document.body.addEventListener('touchstart',e=>startX=e.touches[0].clientX);
-document.body.addEventListener('touchend',e=>{
- let endX=e.changedTouches[0].clientX;
-
- if(startX-endX>50){month++; if(month>11){month=0;year++}}
- if(endX-startX>50){month--; if(month<0){month=11;year--}}
-
- loadData();render();calc();
-});
+if('serviceWorker' in navigator){
+ navigator.serviceWorker.register('sw.js');
+}
 
 loadData();
 render();
 calc();
-</script>
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
 </script>
 </body>
 </html>
