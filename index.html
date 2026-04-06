@@ -16,7 +16,7 @@ body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff}
 .active{background:#22c55e;color:#000}
 
-/* ===== STYLE CŨ GIỮ NGUYÊN ===== */
+/* ===== STYLE CŨ ===== */
 .card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
@@ -38,6 +38,11 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 .noteItem{display:flex;gap:5px;margin-bottom:5px}
 .noteItem input{flex:1}
 .total{font-size:18px;text-align:center;margin-top:5px;color:#22c55e}
+
+/* TAB 3 */
+.remindItem{background:#334155;padding:8px;border-radius:10px;margin-bottom:5px;font-size:13px}
+.overdue{background:#7f1d1d}
+.todayTask{background:#f59e0b;color:#000}
 </style>
 </head>
 
@@ -48,9 +53,10 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <div class="tabs">
 <button class="tabBtn active" onclick="switchTab(1)">💰 Tính lương</button>
 <button class="tabBtn" onclick="switchTab(2)">📊 Tài chính</button>
+<button class="tabBtn" onclick="switchTab(3)">📅 Lịch nhắc</button>
 </div>
 
-<!-- ================= TAB 1 NGUYÊN BẢN ================= -->
+<!-- ================= TAB 1 (NGUYÊN 100%) ================= -->
 <div id="tab1">
 
 <h2 id="title">📊 Bảng lương</h2>
@@ -84,7 +90,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 
 </div>
 
-<!-- ================= TAB 2 ĐÃ FIX ================= -->
+<!-- ================= TAB 2 ================= -->
 <div id="tab2" style="display:none">
 
 <h2>📊 Quản lý chi tiêu</h2>
@@ -108,20 +114,46 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 
 </div>
 
+<!-- ================= TAB 3 ================= -->
+<div id="tab3" style="display:none">
+
+<h2>📅 Lịch nhắc việc</h2>
+
+<div class="card">
+<div class="row">
+<button class="btn" onclick="prevRemindMonth()">⬅️</button>
+<button class="btn" onclick="nextRemindMonth()">➡️</button>
+</div>
+
+<div id="remindMonth" style="text-align:center;margin:5px 0"></div>
+
+<input id="taskText" placeholder="Nhập việc...">
+<input id="taskDate" type="date">
+
+<button class="btn" onclick="addTask()">➕ Thêm việc</button>
+
+<div id="taskList"></div>
+
+</div>
+
+</div>
+
 </div>
 
 <script>
-// TAB SWITCH
+
+/* TAB SWITCH */
 function switchTab(n){
  document.getElementById('tab1').style.display = n===1?'block':'none';
  document.getElementById('tab2').style.display = n===2?'block':'none';
+ document.getElementById('tab3').style.display = n===3?'block':'none';
 
  document.querySelectorAll('.tabBtn').forEach((b,i)=>{
   b.classList.toggle('active',i===n-1);
  });
 }
 
-/* ====================== CODE LƯƠNG GIỮ NGUYÊN ====================== */
+/* ================= TAB 1: NGUYÊN CODE BẠN ================= */
 
 const name = document.getElementById('name');
 const base = document.getElementById('base');
@@ -347,37 +379,30 @@ load();
 render();
 calc();
 
-/* ====================== TAB 2 ====================== */
+/* ================= TAB 2 ================= */
 
 let fDate = new Date();
 let fMonth = fDate.getMonth();
 let fYear = fDate.getFullYear();
 
-function fKey(){
- return `finance_${fYear}_${fMonth}`;
-}
+function fKey(){return `finance_${fYear}_${fMonth}`;}
 
 function updateFinanceTitle(){
- document.getElementById('financeMonth').innerText = `Tháng ${fMonth+1}/${fYear}`;
+ document.getElementById('financeMonth').innerText=`Tháng ${fMonth+1}/${fYear}`;
 }
 
 function addNote(text='',money=''){
  let div=document.createElement('div');
  div.className='noteItem';
- div.innerHTML=`<input placeholder="Chi gì" value="${text}">
-                <input type="number" placeholder="Tiền" value="${money}">`;
+ div.innerHTML=`<input value="${text}"><input type="number" value="${money}">`;
  document.getElementById('noteList').appendChild(div);
-
  div.querySelectorAll('input').forEach(i=>i.oninput=saveNote);
 }
 
 function saveNote(){
  let arr=[];
  document.querySelectorAll('.noteItem').forEach(n=>{
-  arr.push({
-   text:n.children[0].value,
-   money:n.children[1].value
-  });
+  arr.push({text:n.children[0].value,money:n.children[1].value});
  });
  localStorage.setItem(fKey(),JSON.stringify(arr));
  calcFinance();
@@ -395,9 +420,7 @@ function calcFinance(){
  document.querySelectorAll('.noteItem').forEach(n=>{
   total+=Number(n.children[1].value||0);
  });
-
- document.getElementById('totalSpend').innerHTML =
-  "💸 Đã chi: " + total.toLocaleString("vi-VN") + "đ";
+ document.getElementById('totalSpend').innerHTML="💸 Đã chi: "+total.toLocaleString("vi-VN")+"đ";
 }
 
 function clearNote(){
@@ -407,22 +430,72 @@ function clearNote(){
  }
 }
 
-function prevFinanceMonth(){
- fMonth--;
- if(fMonth<0){fMonth=11;fYear--;}
- updateFinanceTitle();
- loadNote();
-}
-
-function nextFinanceMonth(){
- fMonth++;
- if(fMonth>11){fMonth=0;fYear++;}
- updateFinanceTitle();
- loadNote();
-}
+function prevFinanceMonth(){fMonth--;if(fMonth<0){fMonth=11;fYear--;}updateFinanceTitle();loadNote();}
+function nextFinanceMonth(){fMonth++;if(fMonth>11){fMonth=0;fYear++;}updateFinanceTitle();loadNote();}
 
 updateFinanceTitle();
 loadNote();
+
+/* ================= TAB 3 ================= */
+
+let rDate=new Date();
+let rMonth=rDate.getMonth();
+let rYear=rDate.getFullYear();
+
+function rKey(){return `remind_${rYear}_${rMonth}`;}
+
+function updateRemindTitle(){
+ document.getElementById('remindMonth').innerText=`Tháng ${rMonth+1}/${rYear}`;
+}
+
+function addTask(){
+ let text=document.getElementById('taskText').value;
+ let date=document.getElementById('taskDate').value;
+ if(!text||!date) return alert("Nhập đủ!");
+
+ let arr=JSON.parse(localStorage.getItem(rKey())||'[]');
+ arr.push({text,date});
+ localStorage.setItem(rKey(),JSON.stringify(arr));
+
+ document.getElementById('taskText').value='';
+ document.getElementById('taskDate').value='';
+ loadTask();
+}
+
+function loadTask(){
+ let list=document.getElementById('taskList');
+ list.innerHTML='';
+ let arr=JSON.parse(localStorage.getItem(rKey())||'[]');
+
+ let todayStr=new Date().toISOString().split('T')[0];
+
+ arr.forEach((t,i)=>{
+  let div=document.createElement('div');
+  div.className='remindItem';
+
+  if(t.date===todayStr) div.classList.add('todayTask');
+  else if(t.date<todayStr) div.classList.add('overdue');
+
+  div.innerHTML=`
+  📌 ${t.text}<br>📅 ${t.date}
+  <button onclick="delTask(${i})">❌</button>
+  `;
+  list.appendChild(div);
+ });
+}
+
+function delTask(i){
+ let arr=JSON.parse(localStorage.getItem(rKey())||'[]');
+ arr.splice(i,1);
+ localStorage.setItem(rKey(),JSON.stringify(arr));
+ loadTask();
+}
+
+function prevRemindMonth(){rMonth--;if(rMonth<0){rMonth=11;rYear--;}updateRemindTitle();loadTask();}
+function nextRemindMonth(){rMonth++;if(rMonth>11){rMonth=0;rYear++;}updateRemindTitle();loadTask();}
+
+updateRemindTitle();
+loadTask();
 
 </script>
 </body>
