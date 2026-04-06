@@ -14,7 +14,6 @@ body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
-.notice{background:#2563eb;padding:8px;border-radius:8px;text-align:center;font-size:13px}
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155}
 .header{background:#000}
@@ -23,6 +22,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 .half{background:#f59e0b}
 .future{opacity:0.3}
 .today{outline:2px solid yellow}
+.btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:8px}
 </style>
 </head>
 
@@ -30,14 +30,14 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <div class="container">
 <h2 id="title">📊 Bảng lương</h2>
 
-<div class="notice" id="notice"></div>
-
 <div class="card grid">
 <input id="name" placeholder="Tên">
 <input id="base" type="number" placeholder="Lương">
 <input id="allow" type="number" placeholder="Phụ cấp/ngày">
 <input id="advance" type="number" placeholder="Ứng lương">
 </div>
+
+<button class="btn" onclick="updateNow()">🔄 CẬP NHẬT</button>
 
 <div class="card">
 <div id="monthTitle" style="text-align:center"></div>
@@ -48,7 +48,6 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 </div>
 
 <script>
-// bind elements
 const name = document.getElementById('name');
 const base = document.getElementById('base');
 const allow = document.getElementById('allow');
@@ -57,6 +56,7 @@ const calendar = document.getElementById('calendar');
 const result = document.getElementById('result');
 const monthTitle = document.getElementById('monthTitle');
 const title = document.getElementById('title');
+
 let now=new Date();
 let year=now.getFullYear();
 let month=now.getMonth();
@@ -64,23 +64,37 @@ let today=now.getDate();
 
 function key(k){return `${k}_${year}_${month}`}
 
-// ===== LOAD =====
+// LOAD
 function loadData(){
- name.value = localStorage.getItem('name_global') || '';
- base.value = localStorage.getItem(key('base')) || '';
- allow.value = localStorage.getItem(key('allow')) || '';
- advance.value = localStorage.getItem(key('adv')) || '';
+ let backup = JSON.parse(localStorage.getItem("backup_salary") || "{}");
+
+ name.value = localStorage.getItem('name_global') || backup.name || '';
+ base.value = localStorage.getItem(key('base')) || backup.base || '';
+ allow.value = localStorage.getItem(key('allow')) || backup.allow || '';
+ advance.value = localStorage.getItem(key('adv')) || backup.adv || '';
+
  updateTitle();
 }
 
-// ===== SAVE =====
+// SAVE
+function saveAll(){
+ localStorage.setItem('name_global',name.value);
+ localStorage.setItem(key('base'),base.value);
+ localStorage.setItem(key('allow'),allow.value);
+ localStorage.setItem(key('adv'),advance.value);
+
+ localStorage.setItem("backup_salary", JSON.stringify({
+  name:name.value,
+  base:base.value,
+  allow:allow.value,
+  adv:advance.value
+ }));
+}
+
 name.oninput = ()=>{
  localStorage.setItem('name_global',name.value);
  updateTitle();
 }
-base.oninput=()=>localStorage.setItem(key('base'),base.value)
-allow.oninput=()=>localStorage.setItem(key('allow'),allow.value)
-advance.oninput=()=>localStorage.setItem(key('adv'),advance.value)
 
 function updateTitle(){
  if(name.value) title.innerText = "📊 " + name.value;
@@ -89,6 +103,7 @@ function updateTitle(){
 
 function isSunday(d){return new Date(year,month,d).getDay()===0}
 
+// CALC
 function calc(){
  let baseVal=+base.value||0;
  let allowVal=+allow.value||0;
@@ -125,6 +140,13 @@ function calc(){
  `;
 }
 
+// BUTTON
+function updateNow(){
+ saveAll();
+ calc();
+}
+
+// RENDER
 function render(){
  calendar.innerHTML='';
  let days=new Date(year,month+1,0).getDate();
@@ -159,7 +181,6 @@ function render(){
   let input=div.querySelector('input');
   input.oninput=e=>{
    localStorage.setItem(key(`ot_${i}`),e.target.value);
-   calc();
   };
 
   div.onclick=e=>{
@@ -171,7 +192,7 @@ function render(){
    else if(cur==='half') localStorage.setItem(key(`status_${i}`),'off');
    else localStorage.removeItem(key(`status_${i}`));
 
-   render();calc();
+   render();
   };
 
   calendar.appendChild(div);
