@@ -37,9 +37,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 /* TAB 2 */
 .noteItem{display:flex;gap:5px;margin-bottom:5px}
 .noteItem input{flex:1}
-.total{font-size:18px;text-align:center;margin-top:5px}
-.good{color:#22c55e}
-.bad{color:#ef4444}
+.total{font-size:18px;text-align:center;margin-top:5px;color:#22c55e}
 </style>
 </head>
 
@@ -52,10 +50,8 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <button class="tabBtn" onclick="switchTab(2)">📊 Tài chính</button>
 </div>
 
-<!-- TAB 1 (CODE BẠN 100%) -->
+<!-- ================= TAB 1 NGUYÊN BẢN ================= -->
 <div id="tab1">
-
-<!-- ===== DÁN NGUYÊN CODE CỦA BẠN ===== -->
 
 <h2 id="title">📊 Bảng lương</h2>
 
@@ -88,20 +84,25 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 
 </div>
 
-<!-- TAB 2 -->
+<!-- ================= TAB 2 ĐÃ FIX ================= -->
 <div id="tab2" style="display:none">
 
-<h2>📊 Quản lý tài chính</h2>
+<h2>📊 Quản lý chi tiêu</h2>
 
 <div class="card">
+<div class="row">
+<button class="btn" onclick="prevFinanceMonth()">⬅️</button>
+<button class="btn" onclick="nextFinanceMonth()">➡️</button>
+</div>
+
+<div id="financeMonth" style="text-align:center;margin:5px 0"></div>
+
 <div id="noteList"></div>
 
 <button class="btn" onclick="addNote()">➕ Thêm chi tiêu</button>
-<button class="btn" onclick="clearNote()">🗑 Xóa tất cả</button>
+<button class="btn" onclick="clearNote()">🗑 Xóa tháng này</button>
 
 <div class="total" id="totalSpend"></div>
-<div class="total" id="salaryView"></div>
-<div class="total" id="finalMoney"></div>
 
 </div>
 
@@ -120,9 +121,7 @@ function switchTab(n){
  });
 }
 
-/* ======================
-   ⚠️ CODE BẠN NGUYÊN XI
-   ====================== */
+/* ====================== CODE LƯƠNG GIỮ NGUYÊN ====================== */
 
 const name = document.getElementById('name');
 const base = document.getElementById('base');
@@ -325,7 +324,6 @@ function render(){
   input.oninput=e=>{
    localStorage.setItem(key(`ot_${i}`),e.target.value);
    calc();
-   calcFinance();
   };
 
   div.onclick=e=>{
@@ -339,7 +337,6 @@ function render(){
 
    render();
    calc();
-   calcFinance();
   };
 
   calendar.appendChild(div);
@@ -350,33 +347,46 @@ load();
 render();
 calc();
 
-/* ===== TAB 2 ===== */
-function addNote(){
+/* ====================== TAB 2 ====================== */
+
+let fDate = new Date();
+let fMonth = fDate.getMonth();
+let fYear = fDate.getFullYear();
+
+function fKey(){
+ return `finance_${fYear}_${fMonth}`;
+}
+
+function updateFinanceTitle(){
+ document.getElementById('financeMonth').innerText = `Tháng ${fMonth+1}/${fYear}`;
+}
+
+function addNote(text='',money=''){
  let div=document.createElement('div');
  div.className='noteItem';
- div.innerHTML=`<input placeholder="Chi gì"><input type="number" placeholder="Tiền">`;
+ div.innerHTML=`<input placeholder="Chi gì" value="${text}">
+                <input type="number" placeholder="Tiền" value="${money}">`;
  document.getElementById('noteList').appendChild(div);
+
  div.querySelectorAll('input').forEach(i=>i.oninput=saveNote);
 }
 
 function saveNote(){
  let arr=[];
  document.querySelectorAll('.noteItem').forEach(n=>{
-  arr.push({text:n.children[0].value,money:n.children[1].value});
+  arr.push({
+   text:n.children[0].value,
+   money:n.children[1].value
+  });
  });
- localStorage.setItem('finance_note',JSON.stringify(arr));
+ localStorage.setItem(fKey(),JSON.stringify(arr));
  calcFinance();
 }
 
 function loadNote(){
- let data=JSON.parse(localStorage.getItem('finance_note')||'[]');
- data.forEach(d=>{
-  addNote();
-  let n=document.querySelectorAll('.noteItem');
-  n=n[n.length-1];
-  n.children[0].value=d.text;
-  n.children[1].value=d.money;
- });
+ document.getElementById('noteList').innerHTML='';
+ let data=JSON.parse(localStorage.getItem(fKey())||'[]');
+ data.forEach(d=>addNote(d.text,d.money));
  calcFinance();
 }
 
@@ -386,32 +396,34 @@ function calcFinance(){
   total+=Number(n.children[1].value||0);
  });
 
- document.getElementById('totalSpend').innerHTML="💸 Chi: "+money(total)+"đ";
-
- let salary = Number((result.innerText||"0").replace(/\D/g,''))||0;
- document.getElementById('salaryView').innerHTML="💰 Lương: "+money(salary)+"đ";
-
- let final = salary - total;
- let el=document.getElementById('finalMoney');
-
- if(final>=0){
-  el.className="total good";
-  el.innerHTML="✅ Còn: +"+money(final)+"đ";
- }else{
-  el.className="total bad";
-  el.innerHTML="❌ Lỗ: "+money(final)+"đ";
- }
+ document.getElementById('totalSpend').innerHTML =
+  "💸 Đã chi: " + total.toLocaleString("vi-VN") + "đ";
 }
 
 function clearNote(){
- if(confirm("Xóa hết?")){
-  localStorage.removeItem('finance_note');
-  document.getElementById('noteList').innerHTML='';
-  calcFinance();
+ if(confirm("Xóa chi tiêu tháng này?")){
+  localStorage.removeItem(fKey());
+  loadNote();
  }
 }
 
+function prevFinanceMonth(){
+ fMonth--;
+ if(fMonth<0){fMonth=11;fYear--;}
+ updateFinanceTitle();
+ loadNote();
+}
+
+function nextFinanceMonth(){
+ fMonth++;
+ if(fMonth>11){fMonth=0;fYear++;}
+ updateFinanceTitle();
+ loadNote();
+}
+
+updateFinanceTitle();
 loadNote();
+
 </script>
 </body>
 </html>
