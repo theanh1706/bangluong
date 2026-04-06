@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bảng lương PRO FINAL</title>
+<title>VIP PRO MAX</title>
 
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
 
 <style>
 body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
-.container{max-width:500px;margin:auto;padding:10px}
+.container{max-width:520px;margin:auto;padding:10px}
 .card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
@@ -22,29 +21,46 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 .half{background:#f59e0b}
 .future{opacity:0.3}
 .today{outline:2px solid yellow}
-.btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:8px}
+.btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:6px}
+.row{display:flex;gap:5px}
+.stat{font-size:13px;color:#94a3b8}
+.big{font-size:22px;color:#22c55e;text-align:center;font-weight:bold}
+.warn{color:#f59e0b;font-size:13px;text-align:center}
 </style>
 </head>
 
 <body>
 <div class="container">
+
 <h2 id="title">📊 Bảng lương</h2>
 
 <div class="card grid">
 <input id="name" placeholder="Tên">
-<input id="base" type="number" placeholder="Lương">
-<input id="allow" type="number" placeholder="Phụ cấp/ngày">
-<input id="advance" type="number" placeholder="Ứng lương">
+<input id="base" placeholder="Lương">
+<input id="allow" placeholder="Phụ cấp/ngày">
+<input id="advance" placeholder="Ứng lương">
+<input id="payday" type="number" placeholder="Ngày nhận lương (vd:15)">
 </div>
 
-<button class="btn" onclick="updateNow()">🔄 CẬP NHẬT</button>
+<button class="btn" onclick="calc()">🔄 CẬP NHẬT</button>
+<button class="btn" onclick="predictSalary()">🔮 Dự đoán full tháng</button>
+<button class="btn" onclick="showOTMoney()">💰 Tổng tiền tăng ca</button>
+<button class="btn" onclick="resetAll()">🗑 RESET DATA</button>
+
+<div class="card warn" id="notify"></div>
 
 <div class="card">
-<div id="monthTitle" style="text-align:center"></div>
+<div class="row">
+<button class="btn" onclick="prevMonth()">⬅️</button>
+<button class="btn" onclick="nextMonth()">➡️</button>
+</div>
+<div id="monthTitle" style="text-align:center;margin-top:5px"></div>
 <div id="calendar" class="calendar"></div>
 </div>
 
-<div class="card" id="result"></div>
+<div class="card stat" id="stats"></div>
+<div class="card big" id="result"></div>
+
 </div>
 
 <script>
@@ -52,8 +68,12 @@ const name = document.getElementById('name');
 const base = document.getElementById('base');
 const allow = document.getElementById('allow');
 const advance = document.getElementById('advance');
+const payday = document.getElementById('payday');
+
 const calendar = document.getElementById('calendar');
 const result = document.getElementById('result');
+const stats = document.getElementById('stats');
+const notify = document.getElementById('notify');
 const monthTitle = document.getElementById('monthTitle');
 const title = document.getElementById('title');
 
@@ -63,53 +83,64 @@ let month=now.getMonth();
 let today=now.getDate();
 
 function key(k){return `${k}_${year}_${month}`}
+function money(n){return Number(n||0).toLocaleString("vi-VN")}
 
-// LOAD
-function loadData(){
- let backup = JSON.parse(localStorage.getItem("backup_salary") || "{}");
-
- name.value = localStorage.getItem('name_global') || backup.name || '';
- base.value = localStorage.getItem(key('base')) || backup.base || '';
- allow.value = localStorage.getItem(key('allow')) || backup.allow || '';
- advance.value = localStorage.getItem(key('adv')) || backup.adv || '';
-
- updateTitle();
+// ✅ FORMAT INPUT
+function formatInput(input){
+ let raw = input.value.replace(/\D/g,'');
+ input.value = raw ? Number(raw).toLocaleString("vi-VN") : '';
 }
 
-// SAVE
-function saveAll(){
- localStorage.setItem('name_global',name.value);
+// ✅ LẤY SỐ THẬT
+function getNumber(val){
+ return Number((val||'').replace(/\./g,'')) || 0;
+}
+
+function save(){
+ localStorage.setItem('name',name.value);
+ localStorage.setItem('payday',payday.value);
  localStorage.setItem(key('base'),base.value);
  localStorage.setItem(key('allow'),allow.value);
  localStorage.setItem(key('adv'),advance.value);
-
- localStorage.setItem("backup_salary", JSON.stringify({
-  name:name.value,
-  base:base.value,
-  allow:allow.value,
-  adv:advance.value
- }));
 }
 
-name.oninput = ()=>{
- localStorage.setItem('name_global',name.value);
+setInterval(save,2000);
+
+[name,payday].forEach(i=>{
+ i.oninput=()=>{save();calc();}
+});
+
+// ✅ FORMAT realtime
+[base,allow,advance].forEach(i=>{
+ i.oninput=()=>{
+  formatInput(i);
+  save();
+  calc();
+ }
+});
+
+function load(){
+ name.value=localStorage.getItem('name')||'';
+ payday.value=localStorage.getItem('payday')||'';
+ base.value=localStorage.getItem(key('base'))||'';
+ allow.value=localStorage.getItem(key('allow'))||'';
+ advance.value=localStorage.getItem(key('adv'))||'';
  updateTitle();
 }
 
 function updateTitle(){
- if(name.value) title.innerText = "📊 " + name.value;
- else title.innerText = "📊 Bảng lương";
+ title.innerText = name.value ? "📊 "+name.value : "📊 Bảng lương";
 }
 
 function isSunday(d){return new Date(year,month,d).getDay()===0}
 
-// CALC
+// ===== CALC =====
 function calc(){
- let baseVal=+base.value||0;
- let allowVal=+allow.value||0;
- let adv=+advance.value||0;
- let days=new Date(year,month+1,0).getDate();
+ let baseVal=getNumber(base.value);
+ let allowVal=getNumber(allow.value);
+ let adv=getNumber(advance.value);
 
+ let days=new Date(year,month+1,0).getDate();
  let daySalary=Math.round(baseVal/26)||0;
  let hourSalary=Math.round(daySalary/8)||0;
 
@@ -119,38 +150,103 @@ function calc(){
   if(i>today) continue;
   if(isSunday(i)) continue;
 
-  let status=localStorage.getItem(key(`status_${i}`));
-
-  if(status==='off'){}
-  else if(status==='half') work+=0.5;
+  let s=localStorage.getItem(key(`status_${i}`));
+  if(s==='off'){}
+  else if(s==='half') work+=0.5;
   else work++;
 
   ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
  }
 
  let bonus = work>=26 ? 200000 : 0;
- let total = work*daySalary + work*allowVal + ot*hourSalary*1.5 + bonus - adv;
+ let otMoney = ot*hourSalary*1.5;
+ let total = work*daySalary + work*allowVal + otMoney + bonus - adv;
 
- result.innerHTML=`
- Công: ${work}<br>
- OT: ${ot}h<br>
- Thưởng: ${bonus.toLocaleString()}<br>
- Ứng: -${adv.toLocaleString()}<br>
- <b style="color:#22c55e;font-size:18px">${total.toLocaleString()}đ</b>
- `;
+ stats.innerHTML=`Ngày làm: ${work} | OT: ${ot}h | 💰 OT: ${money(otMoney)}đ`;
+ result.innerText=money(total)+"đ";
+
+ checkPayday();
 }
 
-// BUTTON
-function updateNow(){
- saveAll();
- calc();
+// ===== DỰ ĐOÁN =====
+function predictSalary(){
+ let baseVal=getNumber(base.value);
+ let allowVal=getNumber(allow.value);
+ let adv=getNumber(advance.value);
+
+ let daySalary=Math.round(baseVal/26)||0;
+ let hourSalary=Math.round(daySalary/8)||0;
+
+ let workDays=26;
+
+ let ot=0;
+ for(let i=1;i<=31;i++){
+  ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
+ }
+
+ let otMoney = ot * hourSalary * 1.5;
+ let allowMoney = workDays * allowVal;
+ let bonus = 200000;
+ let salaryMoney = workDays * daySalary;
+
+ let total = salaryMoney + allowMoney + otMoney + bonus - adv;
+
+ alert(
+  "📊 DỰ ĐOÁN FULL THÁNG\n\n"
+  + "💼 Công: 26 ngày\n"
+  + "💰 Lương cơ bản: "+money(salaryMoney)+"đ\n"
+  + "🎁 Phụ cấp: "+money(allowMoney)+"đ\n"
+  + "⏱ OT: "+money(otMoney)+"đ\n"
+  + "🎉 Thưởng: "+money(bonus)+"đ\n"
+  + "💸 Ứng: "+money(adv)+"đ\n\n"
+  + "👉 TỔNG: "+money(total)+"đ"
+ );
 }
 
-// RENDER
+// ===== OT =====
+function showOTMoney(){
+ let baseVal=getNumber(base.value);
+
+ let daySalary=Math.round(baseVal/26)||0;
+ let hourSalary=Math.round(daySalary/8)||0;
+
+ let ot=0;
+ for(let i=1;i<=31;i++){
+  ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
+ }
+
+ let otMoney = ot * hourSalary * 1.5;
+
+ alert("⏱ Tổng giờ OT: "+ot+"h\n💰 Tiền OT: "+money(otMoney)+"đ");
+}
+
+// ===== NHẮC LƯƠNG =====
+function checkPayday(){
+ let p=+payday.value;
+ if(!p) return notify.innerText="";
+
+ if(today>=p){
+  notify.innerText="🔔 Đã tới ngày nhận lương!";
+ }else{
+  notify.innerText="⏳ Còn "+(p-today)+" ngày nhận lương";
+ }
+}
+
+// ===== RESET =====
+function resetAll(){
+ if(confirm("Xóa toàn bộ dữ liệu?")){
+  localStorage.clear();
+  location.reload();
+ }
+}
+
+// ===== CALENDAR =====
+function prevMonth(){month--; if(month<0){month=11;year--;} render();calc();}
+function nextMonth(){month++; if(month>11){month=0;year++;} render();calc();}
+
 function render(){
  calendar.innerHTML='';
  let days=new Date(year,month+1,0).getDate();
-
  monthTitle.innerText=`Tháng ${month+1}/${year}`;
 
  ['CN','T2','T3','T4','T5','T6','T7'].forEach(d=>{
@@ -169,7 +265,7 @@ function render(){
 
   let status=localStorage.getItem(key(`status_${i}`));
 
-  div.innerHTML=`${i}<br><input type="number" placeholder="OT" value="${localStorage.getItem(key(`ot_${i}`))||''}">`;
+  div.innerHTML=`${i}<br><input type="number" value="${localStorage.getItem(key(`ot_${i}`))||''}">`;
 
   if(i>today || isSunday(i)) div.classList.add('future');
   else if(status==='off') div.classList.add('off');
@@ -181,6 +277,7 @@ function render(){
   let input=div.querySelector('input');
   input.oninput=e=>{
    localStorage.setItem(key(`ot_${i}`),e.target.value);
+   calc();
   };
 
   div.onclick=e=>{
@@ -193,17 +290,15 @@ function render(){
    else localStorage.removeItem(key(`status_${i}`));
 
    render();
+   calc();
   };
 
   calendar.appendChild(div);
  }
 }
 
-if('serviceWorker' in navigator){
- navigator.serviceWorker.register('sw.js');
-}
-
-loadData();
+// INIT
+load();
 render();
 calc();
 </script>
