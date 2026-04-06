@@ -3,13 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VIP PRO MAX FIX</title>
+<title>PRO MAX FINAL</title>
 
 <meta name="theme-color" content="#0f172a">
 
 <style>
 body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .container{max-width:520px;margin:auto;padding:10px}
+
+/* TAB */
+.tabs{display:flex;gap:5px;margin-bottom:10px}
+.tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff}
+.active{background:#22c55e;color:#000}
+
+/* ===== STYLE CŨ GIỮ NGUYÊN ===== */
 .card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
@@ -26,11 +33,29 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 .stat{font-size:13px;color:#94a3b8}
 .big{font-size:22px;color:#22c55e;text-align:center;font-weight:bold}
 .warn{color:#f59e0b;font-size:13px;text-align:center}
+
+/* TAB 2 */
+.noteItem{display:flex;gap:5px;margin-bottom:5px}
+.noteItem input{flex:1}
+.total{font-size:18px;text-align:center;margin-top:5px}
+.good{color:#22c55e}
+.bad{color:#ef4444}
 </style>
 </head>
 
 <body>
 <div class="container">
+
+<!-- TAB -->
+<div class="tabs">
+<button class="tabBtn active" onclick="switchTab(1)">💰 Tính lương</button>
+<button class="tabBtn" onclick="switchTab(2)">📊 Tài chính</button>
+</div>
+
+<!-- TAB 1 (CODE BẠN 100%) -->
+<div id="tab1">
+
+<!-- ===== DÁN NGUYÊN CODE CỦA BẠN ===== -->
 
 <h2 id="title">📊 Bảng lương</h2>
 
@@ -63,7 +88,42 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 
 </div>
 
+<!-- TAB 2 -->
+<div id="tab2" style="display:none">
+
+<h2>📊 Quản lý tài chính</h2>
+
+<div class="card">
+<div id="noteList"></div>
+
+<button class="btn" onclick="addNote()">➕ Thêm chi tiêu</button>
+<button class="btn" onclick="clearNote()">🗑 Xóa tất cả</button>
+
+<div class="total" id="totalSpend"></div>
+<div class="total" id="salaryView"></div>
+<div class="total" id="finalMoney"></div>
+
+</div>
+
+</div>
+
+</div>
+
 <script>
+// TAB SWITCH
+function switchTab(n){
+ document.getElementById('tab1').style.display = n===1?'block':'none';
+ document.getElementById('tab2').style.display = n===2?'block':'none';
+
+ document.querySelectorAll('.tabBtn').forEach((b,i)=>{
+  b.classList.toggle('active',i===n-1);
+ });
+}
+
+/* ======================
+   ⚠️ CODE BẠN NGUYÊN XI
+   ====================== */
+
 const name = document.getElementById('name');
 const base = document.getElementById('base');
 const advance = document.getElementById('advance');
@@ -129,7 +189,6 @@ function updateTitle(){
 
 function isSunday(d){return new Date(year,month,d).getDay()===0}
 
-// ===== CALC =====
 function calc(){
  let baseVal=getNumber(base.value);
  let adv=getNumber(advance.value);
@@ -153,7 +212,6 @@ function calc(){
   ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
  }
 
- // ✅ FIX CHUẨN
  let allowPerDay = 1000000 / 26;
  let allowMoney = work * allowPerDay;
 
@@ -168,7 +226,6 @@ function calc(){
  checkPayday();
 }
 
-// ===== DỰ ĐOÁN =====
 function predictSalary(){
  let baseVal=getNumber(base.value);
  let adv=getNumber(advance.value);
@@ -268,6 +325,7 @@ function render(){
   input.oninput=e=>{
    localStorage.setItem(key(`ot_${i}`),e.target.value);
    calc();
+   calcFinance();
   };
 
   div.onclick=e=>{
@@ -281,6 +339,7 @@ function render(){
 
    render();
    calc();
+   calcFinance();
   };
 
   calendar.appendChild(div);
@@ -290,6 +349,69 @@ function render(){
 load();
 render();
 calc();
+
+/* ===== TAB 2 ===== */
+function addNote(){
+ let div=document.createElement('div');
+ div.className='noteItem';
+ div.innerHTML=`<input placeholder="Chi gì"><input type="number" placeholder="Tiền">`;
+ document.getElementById('noteList').appendChild(div);
+ div.querySelectorAll('input').forEach(i=>i.oninput=saveNote);
+}
+
+function saveNote(){
+ let arr=[];
+ document.querySelectorAll('.noteItem').forEach(n=>{
+  arr.push({text:n.children[0].value,money:n.children[1].value});
+ });
+ localStorage.setItem('finance_note',JSON.stringify(arr));
+ calcFinance();
+}
+
+function loadNote(){
+ let data=JSON.parse(localStorage.getItem('finance_note')||'[]');
+ data.forEach(d=>{
+  addNote();
+  let n=document.querySelectorAll('.noteItem');
+  n=n[n.length-1];
+  n.children[0].value=d.text;
+  n.children[1].value=d.money;
+ });
+ calcFinance();
+}
+
+function calcFinance(){
+ let total=0;
+ document.querySelectorAll('.noteItem').forEach(n=>{
+  total+=Number(n.children[1].value||0);
+ });
+
+ document.getElementById('totalSpend').innerHTML="💸 Chi: "+money(total)+"đ";
+
+ let salary = Number((result.innerText||"0").replace(/\D/g,''))||0;
+ document.getElementById('salaryView').innerHTML="💰 Lương: "+money(salary)+"đ";
+
+ let final = salary - total;
+ let el=document.getElementById('finalMoney');
+
+ if(final>=0){
+  el.className="total good";
+  el.innerHTML="✅ Còn: +"+money(final)+"đ";
+ }else{
+  el.className="total bad";
+  el.innerHTML="❌ Lỗ: "+money(final)+"đ";
+ }
+}
+
+function clearNote(){
+ if(confirm("Xóa hết?")){
+  localStorage.removeItem('finance_note');
+  document.getElementById('noteList').innerHTML='';
+  calcFinance();
+ }
+}
+
+loadNote();
 </script>
 </body>
 </html>
