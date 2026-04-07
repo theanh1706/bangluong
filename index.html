@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PRO MAX FINAL</title>
-
 <meta name="theme-color" content="#0f172a">
-
 <style>
 body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .container{max-width:520px;margin:auto;padding:10px}
@@ -18,13 +16,13 @@ body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 
 /* ===== STYLE CŨ ===== */
 .card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px}
 input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155}
 .header{background:#000}
 .work{background:#16a34a}
-.off{background:#475569}
+.off{background:#7f1d1d}
 .half{background:#f59e0b}
 .future{opacity:0.3}
 .today{outline:2px solid yellow}
@@ -56,7 +54,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <button class="tabBtn" onclick="switchTab(3)">📅 Lịch nhắc</button>
 </div>
 
-<!-- ================= TAB 1 (NGUYÊN 100%) ================= -->
+<!-- ================= TAB 1 ================= -->
 <div id="tab1">
 
 <h2 id="title">📊 Bảng lương</h2>
@@ -65,7 +63,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <input id="name" placeholder="Tên">
 <input id="base" placeholder="Lương">
 <input id="advance" placeholder="Ứng lương">
-<input id="payday" type="number" placeholder="Ngày nhận lương">
+<input id="insurance" placeholder="Bảo hiểm">
 <input id="predictDays" type="number" placeholder="Nhập số ngày dự đoán (tuỳ chọn)">
 </div>
 
@@ -75,7 +73,6 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <button class="btn" onclick="resetAll()">🗑 RESET DATA</button>
 
 <div class="card warn" id="notify"></div>
-
 <div class="card">
 <div class="row">
 <button class="btn" onclick="prevMonth()">⬅️</button>
@@ -153,89 +150,66 @@ function switchTab(n){
  });
 }
 
-/* ================= TAB 1: NGUYÊN CODE BẠN ================= */
+/* ================= TAB 1 ================= */
+const name=document.getElementById('name');
+const base=document.getElementById('base');
+const advance=document.getElementById('advance');
+const insurance=document.getElementById('insurance');
+const predictDays=document.getElementById('predictDays');
+const calendar=document.getElementById('calendar');
+const result=document.getElementById('result');
+const stats=document.getElementById('stats');
+const notify=document.getElementById('notify');
+const monthTitle=document.getElementById('monthTitle');
+const title=document.getElementById('title');
 
-const name = document.getElementById('name');
-const base = document.getElementById('base');
-const advance = document.getElementById('advance');
-const payday = document.getElementById('payday');
-const predictDays = document.getElementById('predictDays');
+let now=new Date(), year=now.getFullYear(), month=now.getMonth(), today=now.getDate();
 
-const calendar = document.getElementById('calendar');
-const result = document.getElementById('result');
-const stats = document.getElementById('stats');
-const notify = document.getElementById('notify');
-const monthTitle = document.getElementById('monthTitle');
-const title = document.getElementById('title');
-
-let now=new Date();
-let year=now.getFullYear();
-let month=now.getMonth();
-let today=now.getDate();
-
-function key(k){return `${k}_${year}_${month}`}
-function money(n){return Number(Math.round(n||0)).toLocaleString("vi-VN")}
-
+function key(k){return `${k}_${year}_${month}`;}
+function money(n){return Number(Math.round(n||0)).toLocaleString("vi-VN");}
 function formatInput(input){
- let raw = input.value.replace(/\D/g,'');
- input.value = raw ? Number(raw).toLocaleString("vi-VN") : '';
+ let raw=input.value.replace(/\D/g,'');
+ input.value=raw?Number(raw).toLocaleString("vi-VN"):'';
 }
-
-function getNumber(val){
- return Number((val||'').replace(/\./g,'')) || 0;
-}
-
+function getNumber(val){return Number((val||'').replace(/\./g,''))||0;}
 function save(){
  localStorage.setItem('name',name.value);
- localStorage.setItem('payday',payday.value);
  localStorage.setItem(key('base'),base.value);
  localStorage.setItem(key('adv'),advance.value);
+ localStorage.setItem(key('insurance'),insurance.value);
 }
-
 setInterval(save,2000);
 
-[name,payday].forEach(i=>{
- i.oninput=()=>{save();calc();}
-});
-
-[base,advance].forEach(i=>{
- i.oninput=()=>{
-  formatInput(i);
-  save();
-  calc();
- }
-});
+[name,insurance].forEach(i=>{i.oninput=()=>{save();calc();}});
+[base,advance].forEach(i=>{i.oninput=()=>{formatInput(i);save();calc();}});
 
 function load(){
  name.value=localStorage.getItem('name')||'';
- payday.value=localStorage.getItem('payday')||'';
  base.value=localStorage.getItem(key('base'))||'';
  advance.value=localStorage.getItem(key('adv'))||'';
+ insurance.value=localStorage.getItem(key('insurance'))||'';
  updateTitle();
 }
-
-function updateTitle(){
- title.innerText = name.value ? "📊 "+name.value : "📊 Bảng lương";
-}
-
-function isSunday(d){return new Date(year,month,d).getDay()===0}
+function updateTitle(){title.innerText=name.value?"📊 "+name.value:"📊 Bảng lương";}
+function isSunday(d){return new Date(year,month,d).getDay()===0;}
 
 function calc(){
  let baseVal=getNumber(base.value);
  let adv=getNumber(advance.value);
+ let ins=getNumber(insurance.value);
 
  let days=new Date(year,month+1,0).getDate();
-
  let daySalary=baseVal/26;
  let hourSalary=daySalary/8;
 
  let work=0, ot=0;
+ let nowDate = new Date();
 
  for(let i=1;i<=days;i++){
-  if(i>today || isSunday(i)) continue;
+  let d=new Date(year,month,i);
+  if(d>nowDate) continue; // chỉ check ngày hiện tại hoặc quá khứ
 
   let s=localStorage.getItem(key(`status_${i}`));
-
   if(s==='off'){}
   else if(s==='half') work+=0.5;
   else work++;
@@ -245,79 +219,40 @@ function calc(){
 
  let allowPerDay = 1000000 / 26;
  let allowMoney = work * allowPerDay;
-
- let bonus = work>=26 ? 200000 : 0;
+ let bonus = work>=26?200000:0;
  let otMoney = ot*hourSalary*1.5;
-
- let total = work*daySalary + allowMoney + otMoney + bonus - adv;
+ let total = work*daySalary + allowMoney + otMoney + bonus - adv - ins;
 
  stats.innerHTML=`Ngày làm: ${work} | OT: ${ot}h | 💰 OT: ${money(otMoney)}đ | 🎁 PC: ${money(allowMoney)}đ`;
  result.innerText=money(total)+"đ";
 
- checkPayday();
+ checkInsurance(ins);
 }
-
+function checkInsurance(ins){
+ if(ins>0) notify.innerText="💉 Bảo hiểm: "+money(ins)+"đ trừ vào lương";
+ else notify.innerText="";
+}
 function predictSalary(){
  let baseVal=getNumber(base.value);
  let adv=getNumber(advance.value);
-
+ let ins=getNumber(insurance.value);
  let daySalary=baseVal/26;
- let hourSalary=daySalary/8;
-
- let work = predictDays.value ? +predictDays.value : 26;
-
- let allowPerDay = 1000000 / 26;
- let allowMoney = work * allowPerDay;
-
- let salaryMoney = work * daySalary;
- let otMoney = 0;
- let bonus = work>=26 ? 200000 : 0;
-
- let total = salaryMoney + allowMoney + otMoney + bonus - adv;
-
- alert(
-  "📊 DỰ ĐOÁN\n\n"
-  + "💼 Công: "+work+"\n"
-  + "💰 Lương: "+money(salaryMoney)+"đ\n"
-  + "🎁 Phụ cấp: "+money(allowMoney)+"đ\n"
-  + "🎉 Thưởng: "+money(bonus)+"đ\n"
-  + "💸 Ứng: "+money(adv)+"đ\n\n"
-  + "👉 TỔNG: "+money(total)+"đ"
- );
+ let work=predictDays.value?+predictDays.value:26;
+ let allowMoney=work*1000000/26;
+ let bonus=work>=26?200000:0;
+ let otMoney=0;
+ let total=work*daySalary + allowMoney + otMoney + bonus - adv - ins;
+ alert("📊 DỰ ĐOÁN\n\n💼 Công: "+work+"\n💰 Lương: "+money(work*daySalary)+"đ\n🎁 Phụ cấp: "+money(allowMoney)+"đ\n🎉 Thưởng: "+money(bonus)+"đ\n💸 Ứng: "+money(adv)+"đ\n💉 Bảo hiểm: "+money(ins)+"đ\n\n👉 TỔNG: "+money(total)+"đ");
 }
-
 function showOTMoney(){
  let baseVal=getNumber(base.value);
  let daySalary=baseVal/26;
  let hourSalary=daySalary/8;
-
  let ot=0;
- for(let i=1;i<=31;i++){
-  ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
- }
-
- let otMoney = ot * hourSalary * 1.5;
-
- alert("⏱ OT: "+ot+"h\n💰 "+money(otMoney)+"đ");
+ for(let i=1;i<=31;i++) ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
+ alert("⏱ OT: "+ot+"h\n💰 "+money(ot*hourSalary*1.5)+"đ");
 }
-
-function checkPayday(){
- let p=+payday.value;
- if(!p) return notify.innerText="";
-
- if(today>=p){
-  notify.innerText="🔔 Đã tới ngày nhận lương!";
- }else{
-  notify.innerText="⏳ Còn "+(p-today)+" ngày";
- }
-}
-
-function resetAll(){
- if(confirm("Xóa toàn bộ dữ liệu?")){
-  localStorage.clear();
-  location.reload();
- }
-}
+function resetAll(){if(confirm("Xóa toàn bộ dữ liệu?")){localStorage.clear();location.reload();}}
 
 function prevMonth(){month--; if(month<0){month=11;year--;} render();calc();}
 function nextMonth(){month++; if(month>11){month=0;year++;} render();calc();}
@@ -326,176 +261,57 @@ function render(){
  calendar.innerHTML='';
  let days=new Date(year,month+1,0).getDate();
  monthTitle.innerText=`Tháng ${month+1}/${year}`;
-
  ['CN','T2','T3','T4','T5','T6','T7'].forEach(d=>{
-  let h=document.createElement('div');
-  h.innerText=d;
-  h.className='day header';
-  calendar.appendChild(h);
+  let h=document.createElement('div'); h.innerText=d; h.className='day header'; calendar.appendChild(h);
  });
-
  let first=new Date(year,month,1).getDay();
  for(let i=0;i<first;i++) calendar.appendChild(document.createElement('div'));
 
+ let nowDate = new Date();
  for(let i=1;i<=days;i++){
-  let div=document.createElement('div');
-  div.className='day';
-
+  let div=document.createElement('div'); div.className='day';
+  let d=new Date(year,month,i);
   let status=localStorage.getItem(key(`status_${i}`));
+  div.innerHTML=`${i}<br><input type="number" value="${d<=nowDate?localStorage.getItem(key(`ot_${i}`))||'':''}">`;
 
-  div.innerHTML=`${i}<br><input type="number" value="${localStorage.getItem(key(`ot_${i}`))||''}">`;
-
-  if(i>today || isSunday(i)) div.classList.add('future');
+  if(d>nowDate) div.classList.add('future');
   else if(status==='off') div.classList.add('off');
   else if(status==='half') div.classList.add('half');
   else div.classList.add('work');
-
-  if(i===today) div.classList.add('today');
+  if(d.toDateString()===nowDate.toDateString()) div.classList.add('today');
 
   let input=div.querySelector('input');
-  input.oninput=e=>{
-   localStorage.setItem(key(`ot_${i}`),e.target.value);
-   calc();
-  };
-
-  div.onclick=e=>{
-   if(e.target===input||i>today||isSunday(i)) return;
-
-   let cur=localStorage.getItem(key(`status_${i}`));
-
-   if(!cur) localStorage.setItem(key(`status_${i}`),'half');
-   else if(cur==='half') localStorage.setItem(key(`status_${i}`),'off');
-   else localStorage.removeItem(key(`status_${i}`));
-
-   render();
-   calc();
-  };
-
+  input.oninput=e=>{if(d>nowDate)return; localStorage.setItem(key(`ot_${i}`),e.target.value);calc();};
+  div.onclick=e=>{if(e.target===input||d>nowDate)return; let cur=localStorage.getItem(key(`status_${i}`)); if(!cur)localStorage.setItem(key(`status_${i}`),'half'); else if(cur==='half')localStorage.setItem(key(`status_${i}`),'off'); else localStorage.removeItem(key(`status_${i}`)); render();calc();};
   calendar.appendChild(div);
- }
 }
 
-load();
-render();
-calc();
+}
+load();render();calc();
 
 /* ================= TAB 2 ================= */
-
-let fDate = new Date();
-let fMonth = fDate.getMonth();
-let fYear = fDate.getFullYear();
-
+let fDate=new Date(), fMonth=fDate.getMonth(), fYear=fDate.getFullYear();
 function fKey(){return `finance_${fYear}_${fMonth}`;}
-
-function updateFinanceTitle(){
- document.getElementById('financeMonth').innerText=`Tháng ${fMonth+1}/${fYear}`;
-}
-
-function addNote(text='',money=''){
- let div=document.createElement('div');
- div.className='noteItem';
- div.innerHTML=`<input value="${text}"><input type="number" value="${money}">`;
- document.getElementById('noteList').appendChild(div);
- div.querySelectorAll('input').forEach(i=>i.oninput=saveNote);
-}
-
-function saveNote(){
- let arr=[];
- document.querySelectorAll('.noteItem').forEach(n=>{
-  arr.push({text:n.children[0].value,money:n.children[1].value});
- });
- localStorage.setItem(fKey(),JSON.stringify(arr));
- calcFinance();
-}
-
-function loadNote(){
- document.getElementById('noteList').innerHTML='';
- let data=JSON.parse(localStorage.getItem(fKey())||'[]');
- data.forEach(d=>addNote(d.text,d.money));
- calcFinance();
-}
-
-function calcFinance(){
- let total=0;
- document.querySelectorAll('.noteItem').forEach(n=>{
-  total+=Number(n.children[1].value||0);
- });
- document.getElementById('totalSpend').innerHTML="💸 Đã chi: "+total.toLocaleString("vi-VN")+"đ";
-}
-
-function clearNote(){
- if(confirm("Xóa chi tiêu tháng này?")){
-  localStorage.removeItem(fKey());
-  loadNote();
- }
-}
-
+function updateFinanceTitle(){document.getElementById('financeMonth').innerText=`Tháng ${fMonth+1}/${fYear}`;}
+function addNote(text='',money=''){let div=document.createElement('div'); div.className='noteItem'; div.innerHTML=`<input value="${text}"><input type="number" value="${money}">`; document.getElementById('noteList').appendChild(div); div.querySelectorAll('input').forEach(i=>i.oninput=saveNote);}
+function saveNote(){let arr=[];document.querySelectorAll('.noteItem').forEach(n=>{arr.push({text:n.children[0].value,money:n.children[1].value});}); localStorage.setItem(fKey(),JSON.stringify(arr)); calcFinance();}
+function loadNote(){document.getElementById('noteList').innerHTML=''; let data=JSON.parse(localStorage.getItem(fKey())||'[]'); data.forEach(d=>addNote(d.text,d.money)); calcFinance();}
+function calcFinance(){let total=0; document.querySelectorAll('.noteItem').forEach(n=>{total+=Number(n.children[1].value||0);}); document.getElementById('totalSpend').innerHTML="💸 Đã chi: "+total.toLocaleString("vi-VN")+"đ";}
+function clearNote(){if(confirm("Xóa chi tiêu tháng này?")){localStorage.removeItem(fKey());loadNote();}}
 function prevFinanceMonth(){fMonth--;if(fMonth<0){fMonth=11;fYear--;}updateFinanceTitle();loadNote();}
 function nextFinanceMonth(){fMonth++;if(fMonth>11){fMonth=0;fYear++;}updateFinanceTitle();loadNote();}
-
-updateFinanceTitle();
-loadNote();
+updateFinanceTitle(); loadNote();
 
 /* ================= TAB 3 ================= */
-
-let rDate=new Date();
-let rMonth=rDate.getMonth();
-let rYear=rDate.getFullYear();
-
+let rDate=new Date(), rMonth=rDate.getMonth(), rYear=rDate.getFullYear();
 function rKey(){return `remind_${rYear}_${rMonth}`;}
-
-function updateRemindTitle(){
- document.getElementById('remindMonth').innerText=`Tháng ${rMonth+1}/${rYear}`;
-}
-
-function addTask(){
- let text=document.getElementById('taskText').value;
- let date=document.getElementById('taskDate').value;
- if(!text||!date) return alert("Nhập đủ!");
-
- let arr=JSON.parse(localStorage.getItem(rKey())||'[]');
- arr.push({text,date});
- localStorage.setItem(rKey(),JSON.stringify(arr));
-
- document.getElementById('taskText').value='';
- document.getElementById('taskDate').value='';
- loadTask();
-}
-
-function loadTask(){
- let list=document.getElementById('taskList');
- list.innerHTML='';
- let arr=JSON.parse(localStorage.getItem(rKey())||'[]');
-
- let todayStr=new Date().toISOString().split('T')[0];
-
- arr.forEach((t,i)=>{
-  let div=document.createElement('div');
-  div.className='remindItem';
-
-  if(t.date===todayStr) div.classList.add('todayTask');
-  else if(t.date<todayStr) div.classList.add('overdue');
-
-  div.innerHTML=`
-  📌 ${t.text}<br>📅 ${t.date}
-  <button onclick="delTask(${i})">❌</button>
-  `;
-  list.appendChild(div);
- });
-}
-
-function delTask(i){
- let arr=JSON.parse(localStorage.getItem(rKey())||'[]');
- arr.splice(i,1);
- localStorage.setItem(rKey(),JSON.stringify(arr));
- loadTask();
-}
-
+function updateRemindTitle(){document.getElementById('remindMonth').innerText=`Tháng ${rMonth+1}/${rYear}`;}
+function addTask(){let text=document.getElementById('taskText').value; let date=document.getElementById('taskDate').value; if(!text||!date)return alert("Nhập đủ!"); let arr=JSON.parse(localStorage.getItem(rKey())||'[]'); arr.push({text,date}); localStorage.setItem(rKey(),JSON.stringify(arr)); document.getElementById('taskText').value=''; document.getElementById('taskDate').value=''; loadTask();}
+function loadTask(){let list=document.getElementById('taskList'); list.innerHTML=''; let arr=JSON.parse(localStorage.getItem(rKey())||'[]'); let todayStr=new Date().toISOString().split('T')[0]; arr.forEach((t,i)=>{let div=document.createElement('div'); div.className='remindItem'; if(t.date===todayStr) div.classList.add('todayTask'); else if(t.date<todayStr) div.classList.add('overdue'); div.innerHTML=`📌 ${t.text}<br>📅 ${t.date} <button onclick="delTask(${i})">❌</button>`; list.appendChild(div);});}
+function delTask(i){let arr=JSON.parse(localStorage.getItem(rKey())||'[]'); arr.splice(i,1); localStorage.setItem(rKey(),JSON.stringify(arr)); loadTask();}
 function prevRemindMonth(){rMonth--;if(rMonth<0){rMonth=11;rYear--;}updateRemindTitle();loadTask();}
 function nextRemindMonth(){rMonth++;if(rMonth>11){rMonth=0;rYear++;}updateRemindTitle();loadTask();}
-
-updateRemindTitle();
-loadTask();
+updateRemindTitle(); loadTask();
 
 </script>
 </body>
