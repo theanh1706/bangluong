@@ -208,6 +208,7 @@ function calc(){
  for(let i=1;i<=days;i++){
   let d=new Date(year,month,i);
   if(d>nowDate) continue; // chỉ check ngày hiện tại hoặc quá khứ
+  if(isSunday(i)) continue; // BỎ QUA CN tự động
 
   let s=localStorage.getItem(key(`status_${i}`));
   if(s==='off'){}
@@ -216,7 +217,7 @@ function calc(){
 
   ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
  }
-
+ 
  let allowPerDay = 1000000 / 26;
  let allowMoney = work * allowPerDay;
  let bonus = work>=26?200000:0;
@@ -268,21 +269,38 @@ function render(){
  for(let i=0;i<first;i++) calendar.appendChild(document.createElement('div'));
 
  let nowDate = new Date();
- for(let i=1;i<=days;i++){
+for(let i=1;i<=days;i++){
   let div=document.createElement('div'); div.className='day';
   let d=new Date(year,month,i);
   let status=localStorage.getItem(key(`status_${i}`));
-  div.innerHTML=`${i}<br><input type="number" value="${d<=nowDate?localStorage.getItem(key(`ot_${i}`))||'':''}">`;
+  
+  let otVal = (d<=nowDate && !isSunday(i)) ? localStorage.getItem(key(`ot_${i}`))||'' : '';
+
+  div.innerHTML=`${i}<br><input type="number" value="${otVal}">`;
 
   if(d>nowDate) div.classList.add('future');
   else if(status==='off') div.classList.add('off');
   else if(status==='half') div.classList.add('half');
-  else div.classList.add('work');
+  else if(!isSunday(i)) div.classList.add('work'); // CN không tô màu công
+
   if(d.toDateString()===nowDate.toDateString()) div.classList.add('today');
 
   let input=div.querySelector('input');
-  input.oninput=e=>{if(d>nowDate)return; localStorage.setItem(key(`ot_${i}`),e.target.value);calc();};
-  div.onclick=e=>{if(e.target===input||d>nowDate)return; let cur=localStorage.getItem(key(`status_${i}`)); if(!cur)localStorage.setItem(key(`status_${i}`),'half'); else if(cur==='half')localStorage.setItem(key(`status_${i}`),'off'); else localStorage.removeItem(key(`status_${i}`)); render();calc();};
+  input.oninput=e=>{
+      if(d>nowDate || isSunday(i)) return; 
+      localStorage.setItem(key(`ot_${i}`),e.target.value);
+      calc();
+  };
+  
+  div.onclick=e=>{
+      if(e.target===input || d>nowDate || isSunday(i)) return; 
+      let cur=localStorage.getItem(key(`status_${i}`)); 
+      if(!cur)localStorage.setItem(key(`status_${i}`),'half'); 
+      else if(cur==='half')localStorage.setItem(key(`status_${i}`),'off'); 
+      else localStorage.removeItem(key(`status_${i}`)); 
+      render(); calc();
+  };
+
   calendar.appendChild(div);
 }
 
