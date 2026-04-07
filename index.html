@@ -11,7 +11,7 @@ body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 
 /* TAB */
 .tabs{display:flex;gap:5px;margin-bottom:10px}
-.tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff}
+.tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff;cursor:pointer}
 .active{background:#22c55e;color:#000}
 
 /* ===== STYLE CŨ ===== */
@@ -19,14 +19,14 @@ body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px}
 input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155}
+.day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155;cursor:pointer}
 .header{background:#000}
 .work{background:#16a34a}
 .off{background:#7f1d1d}
 .half{background:#f59e0b}
-.future{opacity:0.3}
+.future{opacity:0.3;cursor:default}
 .today{outline:2px solid yellow}
-.btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:6px}
+.btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:6px;cursor:pointer}
 .row{display:flex;gap:5px}
 .stat{font-size:13px;color:#94a3b8}
 .big{font-size:22px;color:#22c55e;text-align:center;font-weight:bold}
@@ -208,7 +208,7 @@ function calc(){
  for(let i=1;i<=days;i++){
   let d=new Date(year,month,i);
   if(d>nowDate) continue; // chỉ check ngày hiện tại hoặc quá khứ
-  if(isSunday(i)) continue; // BỎ QUA CN tự động
+  if(isSunday(i)) continue; // bỏ CN
 
   let s=localStorage.getItem(key(`status_${i}`));
   if(s==='off'){}
@@ -243,7 +243,14 @@ function predictSalary(){
  let bonus=work>=26?200000:0;
  let otMoney=0;
  let total=work*daySalary + allowMoney + otMoney + bonus - adv - ins;
- alert("📊 DỰ ĐOÁN\n\n💼 Công: "+work+"\n💰 Lương: "+money(work*daySalary)+"đ\n🎁 Phụ cấp: "+money(allowMoney)+"đ\n🎉 Thưởng: "+money(bonus)+"đ\n💸 Ứng: "+money(adv)+"đ\n💉 Bảo hiểm: "+money(ins)+"đ\n\n👉 TỔNG: "+money(total)+"đ");
+ alert(`📊 DỰ ĐOÁN
+💼 Công: ${work}
+💰 Lương: ${money(work*daySalary)}đ
+🎁 Phụ cấp: ${money(allowMoney)}đ
+🎉 Thưởng: ${money(bonus)}đ
+💸 Ứng: ${money(adv)}đ
+💉 Bảo hiểm: ${money(ins)}đ
+👉 TỔNG: ${money(total)}đ`);
 }
 function showOTMoney(){
  let baseVal=getNumber(base.value);
@@ -251,7 +258,8 @@ function showOTMoney(){
  let hourSalary=daySalary/8;
  let ot=0;
  for(let i=1;i<=31;i++) ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
- alert("⏱ OT: "+ot+"h\n💰 "+money(ot*hourSalary*1.5)+"đ");
+ alert(`⏱ OT: ${ot}h
+💰 ${money(ot*hourSalary*1.5)}đ`);
 }
 function resetAll(){if(confirm("Xóa toàn bộ dữ liệu?")){localStorage.clear();location.reload();}}
 
