@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PRO MAX FINAL V2</title>
+<title>PRO MAX FINAL V2 FIX</title>
 <meta name="theme-color" content="#0f172a">
 <style>
 body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
@@ -88,7 +88,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <!-- ================= TAB 2 ================= -->
 <div id="tab2" style="display:none">
 
-<h2>📊 Quản lý chi tiêu PRO MAX V3</h2>
+<h2>📊 Quản lý chi tiêu PRO</h2>
 
 <div class="card">
 <div class="row">
@@ -103,8 +103,8 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <button class="btn" onclick="addNote()">➕ Thêm chi tiêu</button>
 <button class="btn" onclick="clearNote()">🗑 Xóa tháng này</button>
 
-<div id="totalSpend" class="big"></div>
-<div id="categoryStats" class="stat"></div>
+<div class="big" id="totalSpend"></div>
+<div class="stat" id="categoryStats"></div>
 
 </div>
 </div>
@@ -136,6 +136,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 </div>
 
 <script>
+
 /* ================= TAB SWITCH ================= */
 function switchTab(n){
  document.getElementById('tab1').style.display = n===1?'block':'none';
@@ -144,6 +145,9 @@ function switchTab(n){
  document.querySelectorAll('.tabBtn').forEach((b,i)=>{
   b.classList.toggle('active',i===n-1);
  });
+
+ if(n===2){updateFinanceTitle();loadNote();}
+ if(n===3){updateRemindTitle();loadTask();}
 }
 
 /* ================= TAB 1 ================= */
@@ -169,25 +173,33 @@ function formatInput(input){
 }
 function getNumber(val){return Number((val||'').replace(/\./g,''))||0;}
 
-/* SAVE INPUTS */
+/* SAVE FIX */
 function save(){
- localStorage.setItem('name',name.value);
+ localStorage.setItem('user_name',name.value);
  localStorage.setItem(key('base'),base.value);
  localStorage.setItem(key('adv'),advance.value);
  localStorage.setItem(key('insurance'),insurance.value);
 }
 
+/* FIX NAME REALTIME */
+name.addEventListener('input', ()=>{
+ localStorage.setItem('user_name', name.value);
+ updateTitle();
+});
+
 /* INPUT EVENTS */
 [name,insurance].forEach(i=>{i.addEventListener('input',()=>{save();calc();});});
 [base,advance].forEach(i=>{i.addEventListener('input',()=>{formatInput(i);save();calc();});});
 
+/* LOAD FIX */
 function load(){
- name.value=localStorage.getItem('name')||'';
+ name.value=localStorage.getItem('user_name')||'';
  base.value=localStorage.getItem(key('base'))||'';
  advance.value=localStorage.getItem(key('adv'))||'';
  insurance.value=localStorage.getItem(key('insurance'))||'';
  updateTitle();
 }
+
 function updateTitle(){title.innerText=name.value?"📊 "+name.value:"📊 Bảng lương";}
 function isSunday(d){return new Date(year,month,d).getDay()===0;}
 
@@ -220,35 +232,12 @@ function calc(){
 
  stats.innerHTML=`Ngày làm: ${work} | OT: ${ot}h | 💰 OT: ${money(otMoney)}đ | 🎁 PC: ${money(allowMoney)}đ`;
  result.innerText=money(total)+"đ";
- checkInsurance(ins);
-}
-function checkInsurance(ins){
  notify.innerText = ins>0 ? "💉 Bảo hiểm: "+money(ins)+"đ trừ vào lương" : "";
 }
-function predictSalary(){
- let baseVal=getNumber(base.value);
- let adv=getNumber(advance.value);
- let ins=getNumber(insurance.value);
- let daySalary=baseVal/26;
- let work=predictDays.value?+predictDays.value:26;
- let allowMoney=work*1000000/26;
- let bonus=work>=26?200000:0;
- let otMoney=0;
- let total=work*daySalary + allowMoney + otMoney + bonus - adv - ins;
- alert("📊 DỰ ĐOÁN\n\n💼 Công: "+work+"\n💰 Lương: "+money(work*daySalary)+"đ\n🎁 Phụ cấp: "+money(allowMoney)+"đ\n🎉 Thưởng: "+money(bonus)+"đ\n💸 Ứng: "+money(adv)+"đ\n💉 Bảo hiểm: "+money(ins)+"đ\n\n👉 TỔNG: "+money(total)+"đ");
-}
-function showOTMoney(){
- let baseVal=getNumber(base.value);
- let daySalary=baseVal/26;
- let hourSalary=daySalary/8;
- let ot=0;
- for(let i=1;i<=31;i++) ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
- alert("⏱ OT: "+ot+"h\n💰 "+money(ot*hourSalary*1.5)+"đ");
-}
-function resetAll(){if(confirm("Xóa toàn bộ dữ liệu?")){localStorage.clear();location.reload();}}
 
-function prevMonth(){month--; if(month<0){month=11;year--;} render();calc();}
-function nextMonth(){month++; if(month>11){month=0;year++;} render();calc();}
+/* FIX ĐỔI THÁNG */
+function prevMonth(){month--; if(month<0){month=11;year--;} load(); render(); calc();}
+function nextMonth(){month++; if(month>11){month=0;year++;} load(); render(); calc();}
 
 function render(){
  calendar.innerHTML='';
@@ -284,9 +273,16 @@ function render(){
   calendar.appendChild(div);
  }
 }
+
 load();render();calc();
 
-/* ================= TAB 2 ================= */
+/* CHỐNG MẤT DATA */
+setInterval(save,2000);
+window.addEventListener("beforeunload", save);
+
+/* ===== TAB 2 & 3 GIỮ NGUYÊN ===== */
+/* ================= TAB 2 PRO ================= */
+
 let fDate=new Date(), fMonth=fDate.getMonth(), fYear=fDate.getFullYear();
 
 function fKey(){return `finance_${fYear}_${fMonth}`;}
@@ -385,11 +381,10 @@ function nextFinanceMonth(){
 updateFinanceTitle();
 loadNote();
 
-/* AUTO SAVE chống mất dữ liệu */
+/* chống mất dữ liệu */
 setInterval(saveNote,2000);
 window.addEventListener("beforeunload", saveNote);
 
-/* ================= TAB 3 ================= */
 let rDate=new Date(), rMonth=rDate.getMonth(), rYear=rDate.getFullYear();
 function rKey(){return `remind_${rYear}_${rMonth}`;}
 function updateRemindTitle(){document.getElementById('remindMonth').innerText=`Tháng ${rMonth+1}/${rYear}`;}
@@ -399,6 +394,7 @@ function delTask(i){let arr=JSON.parse(localStorage.getItem(rKey())||'[]'); arr.
 function prevRemindMonth(){rMonth--;if(rMonth<0){rMonth=11;rYear--;}updateRemindTitle();loadTask();}
 function nextRemindMonth(){rMonth++;if(rMonth>11){rMonth=0;rYear++;}updateRemindTitle();loadTask();}
 updateRemindTitle(); loadTask();
+
 </script>
 </body>
 </html>
