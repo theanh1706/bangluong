@@ -127,23 +127,32 @@ let now=new Date(),year=now.getFullYear(),month=now.getMonth();
 function getNumber(val){return Number((val||'').toString().replace(/\./g,''))||0;}
 function money(n){return Number(Math.round(n||0)).toLocaleString("vi-VN");}
 function isSunday(d){return new Date(year,month,d).getDay()===0;}
-function dayKey(d){return `ot_${year}_${month+1}_${d}`;} // OT theo ngày cố định
-function statusKey(d){return `status_${year}_${month+1}_${d}`;}
+function monthKey(){return `tab1_${year}_${month+1}`;}
+function dayKey(d){return `${monthKey()}_ot_${d}`;}
+function statusKey(d){return `${monthKey()}_status_${d}`;}
 
+// Lưu dữ liệu cá nhân + OT + trạng thái
 function saveData(){
- localStorage.setItem('user_name', name.value);
- localStorage.setItem('base', base.value);
- localStorage.setItem('adv', advance.value);
- localStorage.setItem('insurance', insurance.value);
+  const data = {
+    name: name.value,
+    base: base.value,
+    advance: advance.value,
+    insurance: insurance.value,
+    predictDays: predictDays.value
+  };
+  localStorage.setItem('tab1_user', JSON.stringify(data));
 }
 
 function loadData(){
- name.value = localStorage.getItem('user_name')||'';
- base.value = localStorage.getItem('base')||'';
- advance.value = localStorage.getItem('adv')||'';
- insurance.value = localStorage.getItem('insurance')||'';
+  const data = JSON.parse(localStorage.getItem('tab1_user')||'{}');
+  name.value = data.name||'';
+  base.value = data.base||'';
+  advance.value = data.advance||'';
+  insurance.value = data.insurance||'';
+  predictDays.value = data.predictDays||'';
 }
 
+// CALC LƯƠNG
 function calc(){
  let baseVal=getNumber(base.value);
  let adv=getNumber(advance.value);
@@ -177,6 +186,7 @@ function calc(){
  result.innerText=money(total)+"đ";
 }
 
+// DỰ ĐOÁN LƯƠNG
 function predictSalary(){
  let predictDay=Number(predictDays.value||0);
  if(predictDay<=0) return alert("Nhập số ngày dự đoán");
@@ -201,11 +211,9 @@ function predictSalary(){
  }
 
  let allowPerDay=1000000/26;
- let allowMoney=work*allowPerDay;
- let bonus=work>=26?200000:0;
  let otMoney=ot*hourSalary*1.5;
-
- let predictTotal=Math.round(predictDay*daySalary + predictDay*allowPerDay + ot*hourSalary*1.5 + (predictDay>=26?200000:0) - adv - ins);
+ let bonus=work>=26?200000:0;
+ let predictTotal=Math.round(predictDay*daySalary + predictDay*allowPerDay + otMoney + (predictDay>=26?200000:0) - adv - ins);
 
  result.innerHTML=`
  Lương cơ bản: ${money(baseVal)}đ<br>
@@ -298,9 +306,9 @@ function nextMonth(){ month++; if(month>11){month=0;year++;} loadData(); render(
 loadData();
 render();
 calc();
-[name, base, advance, insurance].forEach(i=>i.addEventListener('input', saveData));
+[name, base, advance, insurance, predictDays].forEach(i=>i.addEventListener('input', saveData));
 
-/* ===== TAB 2 & TAB 3 giữ nguyên ===== */
+/* ===== TAB 2 & 3 giữ nguyên ===== */
 let fMonth=new Date().getMonth(),fYear=new Date().getFullYear();
 function fKey(){return `finance_${fYear}_${fMonth}`;}
 function updateFinanceHeader(){ financeMonth.innerHTML=`📅 Tháng ${fMonth+1}/${fYear}`; }
@@ -319,8 +327,7 @@ function addNote(t='',m=''){
 }
 
 function saveNote(){
- let arr=[];
- document.querySelectorAll('.noteItem').forEach(n=> arr.push({t:n.children[0].value,m:n.children[1].value}));
+ let arr=[]; document.querySelectorAll('.noteItem').forEach(n=> arr.push({t:n.children[0].value,m:n.children[1].value}));
  localStorage.setItem(fKey(),JSON.stringify(arr));
  calcFinance();
 }
@@ -328,9 +335,7 @@ function saveNote(){
 function loadNote(){
  noteList.innerHTML='';
  let data=JSON.parse(localStorage.getItem(fKey())||'[]');
- if(data.length===0){
-  data=[ {t:"Ăn uống",m:""}, {t:"Sinh hoạt",m:""}, {t:"Xăng xe",m:""} ];
- }
+ if(data.length===0){ data=[ {t:"Ăn uống",m:""}, {t:"Sinh hoạt",m:""}, {t:"Xăng xe",m:""} ]; }
  data.forEach(d=>addNote(d.t,d.m));
  updateFinanceHeader();
  calcFinance();
@@ -343,24 +348,12 @@ function calcFinance(){
 }
 
 function predictFinance(){
- let days=Number(predictWorkDays.value||0);
- if(days<=0)return alert("Nhập ngày công");
-
- let baseVal=getNumber(base.value);
- let adv=getNumber(advance.value);
- let ins=getNumber(insurance.value);
-
+ let days=Number(predictWorkDays.value||0); if(days<=0)return alert("Nhập ngày công");
+ let baseVal=getNumber(base.value); let adv=getNumber(advance.value); let ins=getNumber(insurance.value);
  let salary=days*(baseVal/26)-adv-ins;
- let spend=0;
- document.querySelectorAll('.noteItem').forEach(n=> spend+=Number(n.children[1].value||0));
+ let spend=0; document.querySelectorAll('.noteItem').forEach(n=> spend+=Number(n.children[1].value||0));
  let remain=salary-spend;
-
- remainMoney.innerHTML=`
- 💰 Lương: ${money(salary)}đ<br>
- 💸 Chi: ${money(spend)}đ<br>
- <hr>
- 💵 Còn: <span style="color:${remain<0?'red':'#22c55e'}">${money(remain)}đ</span>
- `;
+ remainMoney.innerHTML=` 💰 Lương: ${money(salary)}đ<br> 💸 Chi: ${money(spend)}đ<br> <hr> 💵 Còn: <span style="color:${remain<0?'red':'#22c55e'}">${money(remain)}đ</span> `;
 }
 
 function clearNote(){
@@ -394,7 +387,6 @@ function loadTask(){
 }
 
 loadTask();
-
 </script>
 </body>
 </html>
