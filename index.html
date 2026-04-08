@@ -88,7 +88,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <!-- ================= TAB 2 ================= -->
 <div id="tab2" style="display:none">
 
-<h2>📊 Quản lý chi tiêu</h2>
+<h2>📊 Quản lý chi tiêu PRO MAX V3</h2>
 
 <div class="card">
 <div class="row">
@@ -103,10 +103,10 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <button class="btn" onclick="addNote()">➕ Thêm chi tiêu</button>
 <button class="btn" onclick="clearNote()">🗑 Xóa tháng này</button>
 
-<div class="total" id="totalSpend"></div>
+<div id="totalSpend" class="big"></div>
+<div id="categoryStats" class="stat"></div>
 
 </div>
-
 </div>
 
 <!-- ================= TAB 3 ================= -->
@@ -288,16 +288,106 @@ load();render();calc();
 
 /* ================= TAB 2 ================= */
 let fDate=new Date(), fMonth=fDate.getMonth(), fYear=fDate.getFullYear();
+
 function fKey(){return `finance_${fYear}_${fMonth}`;}
-function updateFinanceTitle(){document.getElementById('financeMonth').innerText=`Tháng ${fMonth+1}/${fYear}`;}
-function addNote(text='',money=''){let div=document.createElement('div'); div.className='noteItem'; div.innerHTML=`<input value="${text}"><input type="number" value="${money}">`; document.getElementById('noteList').appendChild(div); div.querySelectorAll('input').forEach(i=>i.oninput=saveNote);}
-function saveNote(){let arr=[];document.querySelectorAll('.noteItem').forEach(n=>{arr.push({text:n.children[0].value,money:n.children[1].value});}); localStorage.setItem(fKey(),JSON.stringify(arr)); calcFinance();}
-function loadNote(){document.getElementById('noteList').innerHTML=''; let data=JSON.parse(localStorage.getItem(fKey())||'[]'); data.forEach(d=>addNote(d.text,d.money)); calcFinance();}
-function calcFinance(){let total=0; document.querySelectorAll('.noteItem').forEach(n=>{total+=Number(n.children[1].value||0);}); document.getElementById('totalSpend').innerHTML="💸 Đã chi: "+total.toLocaleString("vi-VN")+"đ";}
-function clearNote(){if(confirm("Xóa chi tiêu tháng này?")){localStorage.removeItem(fKey());loadNote();}}
-function prevFinanceMonth(){fMonth--;if(fMonth<0){fMonth=11;fYear--;}updateFinanceTitle();loadNote();}
-function nextFinanceMonth(){fMonth++;if(fMonth>11){fMonth=0;fYear++;}updateFinanceTitle();loadNote();}
-updateFinanceTitle(); loadNote();
+
+function updateFinanceTitle(){
+ document.getElementById('financeMonth').innerText=`Tháng ${fMonth+1}/${fYear}`;
+}
+
+function addNote(text='',money='',cat='Ăn uống'){
+ let div=document.createElement('div');
+ div.className='noteItem';
+
+ div.innerHTML=`
+ <input placeholder="Nội dung" value="${text}">
+ <input type="number" placeholder="Tiền" value="${money}">
+ <select>
+   <option ${cat=='Ăn uống'?'selected':''}>Ăn uống</option>
+   <option ${cat=='Sinh hoạt'?'selected':''}>Sinh hoạt</option>
+   <option ${cat=='Di chuyển'?'selected':''}>Di chuyển</option>
+   <option ${cat=='Khác'?'selected':''}>Khác</option>
+ </select>
+ <button onclick="this.parentElement.remove(); saveNote()">❌</button>
+ `;
+
+ document.getElementById('noteList').appendChild(div);
+
+ div.querySelectorAll('input,select').forEach(i=>{
+   i.addEventListener('input', saveNote);
+   i.addEventListener('change', saveNote);
+ });
+}
+
+function saveNote(){
+ let arr=[];
+ document.querySelectorAll('.noteItem').forEach(n=>{
+   arr.push({
+     text:n.children[0].value,
+     money:n.children[1].value,
+     cat:n.children[2].value
+   });
+ });
+ localStorage.setItem(fKey(),JSON.stringify(arr));
+ calcFinance();
+}
+
+function loadNote(){
+ document.getElementById('noteList').innerHTML='';
+ let data=JSON.parse(localStorage.getItem(fKey())||'[]');
+ data.forEach(d=>addNote(d.text,d.money,d.cat));
+ calcFinance();
+}
+
+function calcFinance(){
+ let total=0;
+ let catTotal={};
+
+ document.querySelectorAll('.noteItem').forEach(n=>{
+   let money=Number(n.children[1].value||0);
+   let cat=n.children[2].value;
+
+   total+=money;
+   catTotal[cat]=(catTotal[cat]||0)+money;
+ });
+
+ document.getElementById('totalSpend').innerText=
+   "💸 Tổng: "+total.toLocaleString("vi-VN")+"đ";
+
+ let html="📊 Theo loại:<br>";
+ for(let c in catTotal){
+   html+=`${c}: ${catTotal[c].toLocaleString("vi-VN")}đ<br>`;
+ }
+ document.getElementById('categoryStats').innerHTML=html;
+}
+
+function clearNote(){
+ if(confirm("Xóa chi tiêu tháng này?")){
+   localStorage.removeItem(fKey());
+   loadNote();
+ }
+}
+
+function prevFinanceMonth(){
+ fMonth--;
+ if(fMonth<0){fMonth=11;fYear--;}
+ updateFinanceTitle();
+ loadNote();
+}
+
+function nextFinanceMonth(){
+ fMonth++;
+ if(fMonth>11){fMonth=0;fYear++;}
+ updateFinanceTitle();
+ loadNote();
+}
+
+updateFinanceTitle();
+loadNote();
+
+/* AUTO SAVE chống mất dữ liệu */
+setInterval(saveNote,2000);
+window.addEventListener("beforeunload", saveNote);
 
 /* ================= TAB 3 ================= */
 let rDate=new Date(), rMonth=rDate.getMonth(), rYear=rDate.getFullYear();
