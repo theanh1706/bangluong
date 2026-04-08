@@ -310,8 +310,8 @@ function addNote(t='',m=''){
  let div=document.createElement('div');
  div.className='noteItem';
  div.innerHTML=`
- <input value="${t}">
- <input type="number" value="${m}">
+ <input placeholder="Nội dung (ăn uống...)" value="${t}">
+ <input type="number" placeholder="Số tiền" value="${m}">
  <button onclick="this.parentElement.remove();saveNote()">❌</button>
  `;
  noteList.appendChild(div);
@@ -319,6 +319,8 @@ function addNote(t='',m=''){
  div.querySelectorAll('input').forEach(i=>{
   i.addEventListener('input',saveNote);
  });
+
+ saveNote(); // 🔥 QUAN TRỌNG
 }
 
 function saveNote(){
@@ -332,10 +334,22 @@ function saveNote(){
 
 function loadNote(){
  noteList.innerHTML='';
+
  let data=JSON.parse(localStorage.getItem(fKey())||'[]');
+
+ // 🔥 nếu chưa có thì tạo sẵn
+ if(data.length===0){
+  data=[
+   {t:"Ăn uống",m:""},
+   {t:"Sinh hoạt",m:""},
+   {t:"Xăng xe",m:""}
+  ];
+ }
+
  data.forEach(d=>addNote(d.t,d.m));
+
+ updateFinanceHeader(); // 🔥 HIỆN THÁNG
  calcFinance();
- updateFinanceHeader();
 }
 
 function calcFinance(){
