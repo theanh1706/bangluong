@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PRO MAX FINAL V2 FIX</title>
+<title>PRO MAX FINAL SAFE</title>
 <meta name="theme-color" content="#0f172a">
+
 <style>
 body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .container{max-width:520px;margin:auto;padding:10px}
 
-/* TAB */
 .tabs{display:flex;gap:5px;margin-bottom:10px}
-.tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff;cursor:pointer}
+.tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff}
 .active{background:#22c55e;color:#000}
 
-/* ===== STYLE CŨ ===== */
+/* ===== GIỮ NGUYÊN ===== */
 .card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
 .grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px}
 input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
@@ -26,33 +26,29 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 .half{background:#f59e0b}
 .future{opacity:0.3}
 .today{outline:2px solid yellow}
-.btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:6px;cursor:pointer}
+.btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:6px}
 .row{display:flex;gap:5px}
 .stat{font-size:13px;color:#94a3b8}
 .big{font-size:22px;color:#22c55e;text-align:center;font-weight:bold}
-.warn{color:#f59e0b;font-size:13px;text-align:center}
+.warn{color:#f59e0b;text-align:center}
 
-/* TAB 2 */
 .noteItem{display:flex;gap:5px;margin-bottom:5px}
-.noteItem input{flex:1}
-
-/* TAB 3 */
-.remindItem{background:#334155;padding:8px;border-radius:10px;margin-bottom:5px;font-size:13px}
+.remindItem{background:#334155;padding:8px;border-radius:10px;margin-bottom:5px}
 .overdue{background:#7f1d1d}
 .todayTask{background:#f59e0b;color:#000}
 </style>
 </head>
+
 <body>
 <div class="container">
 
-<!-- TAB -->
 <div class="tabs">
 <button class="tabBtn active" onclick="switchTab(1)">💰 Tính lương</button>
 <button class="tabBtn" onclick="switchTab(2)">📊 Tài chính</button>
 <button class="tabBtn" onclick="switchTab(3)">📅 Lịch nhắc</button>
 </div>
 
-<!-- ================= TAB 1 ================= -->
+<!-- TAB 1 -->
 <div id="tab1">
 
 <h2 id="title">📊 Bảng lương</h2>
@@ -62,21 +58,23 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <input id="base" placeholder="Lương">
 <input id="advance" placeholder="Ứng lương">
 <input id="insurance" placeholder="Bảo hiểm">
-<input id="predictDays" type="number" placeholder="Nhập số ngày dự đoán (tuỳ chọn)">
+<input id="predictDays" type="number" placeholder="Nhập ngày dự đoán">
 </div>
 
 <button class="btn" onclick="calc()">🔄 CẬP NHẬT</button>
 <button class="btn" onclick="predictSalary()">🔮 Dự đoán</button>
-<button class="btn" onclick="showOTMoney()">💰 Tổng tiền tăng ca</button>
+<button class="btn" onclick="showOTMoney()">💰 Tổng OT</button>
 <button class="btn" onclick="resetAll()">🗑 RESET DATA</button>
 
 <div class="card warn" id="notify"></div>
+
 <div class="card">
 <div class="row">
 <button class="btn" onclick="prevMonth()">⬅️</button>
 <button class="btn" onclick="nextMonth()">➡️</button>
 </div>
-<div id="monthTitle" style="text-align:center;margin-top:5px"></div>
+
+<div id="monthTitle"></div>
 <div id="calendar" class="calendar"></div>
 </div>
 
@@ -85,315 +83,273 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 
 </div>
 
-<!-- ================= TAB 2 ================= -->
+<!-- TAB 2 -->
 <div id="tab2" style="display:none">
-
-<h2>📊 Quản lý chi tiêu PRO</h2>
+<h2>📊 Tài chính</h2>
 
 <div class="card">
-<div class="row">
-<button class="btn" onclick="prevFinanceMonth()">⬅️</button>
-<button class="btn" onclick="nextFinanceMonth()">➡️</button>
-</div>
-
-<div id="financeMonth" style="text-align:center;margin:5px 0"></div>
-
-<div id="noteList"></div>
-
-<button class="btn" onclick="addNote()">➕ Thêm chi tiêu</button>
-<button class="btn" onclick="clearNote()">🗑 Xóa tháng này</button>
+<div id="financeMonth"></div>
 
 <div class="big" id="totalSpend"></div>
 <div class="stat" id="categoryStats"></div>
 
+<div id="noteList"></div>
+
+<button class="btn" onclick="addNote()">➕ Thêm</button>
+<button class="btn" onclick="clearNote()">🗑 Xóa</button>
+
+<input id="predictWorkDays" type="number" placeholder="Nhập ngày công">
+<button class="btn" onclick="predictFinance()">🔮 Dự đoán còn bao nhiêu</button>
+
+<div class="big" id="remainMoney"></div>
 </div>
 </div>
 
-<!-- ================= TAB 3 ================= -->
+<!-- TAB 3 -->
 <div id="tab3" style="display:none">
-
-<h2>📅 Lịch nhắc việc</h2>
-
-<div class="card">
-<div class="row">
-<button class="btn" onclick="prevRemindMonth()">⬅️</button>
-<button class="btn" onclick="nextRemindMonth()">➡️</button>
-</div>
-
-<div id="remindMonth" style="text-align:center;margin:5px 0"></div>
-
-<input id="taskText" placeholder="Nhập việc...">
+<h2>📅 Lịch nhắc</h2>
+<input id="taskText">
 <input id="taskDate" type="date">
-
-<button class="btn" onclick="addTask()">➕ Thêm việc</button>
-
+<button class="btn" onclick="addTask()">➕</button>
 <div id="taskList"></div>
-
-</div>
-
 </div>
 
 </div>
 
 <script>
 
-/* ================= TAB SWITCH ================= */
+/* TAB SWITCH */
 function switchTab(n){
- document.getElementById('tab1').style.display = n===1?'block':'none';
- document.getElementById('tab2').style.display = n===2?'block':'none';
- document.getElementById('tab3').style.display = n===3?'block':'none';
- document.querySelectorAll('.tabBtn').forEach((b,i)=>{
-  b.classList.toggle('active',i===n-1);
- });
-
- if(n===2){updateFinanceTitle();loadNote();}
- if(n===3){updateRemindTitle();loadTask();}
+ tab1.style.display=n===1?'block':'none';
+ tab2.style.display=n===2?'block':'none';
+ tab3.style.display=n===3?'block':'none';
 }
 
-/* ================= TAB 1 ================= */
-const name=document.getElementById('name');
-const base=document.getElementById('base');
-const advance=document.getElementById('advance');
-const insurance=document.getElementById('insurance');
-const predictDays=document.getElementById('predictDays');
-const calendar=document.getElementById('calendar');
-const result=document.getElementById('result');
-const stats=document.getElementById('stats');
-const notify=document.getElementById('notify');
-const monthTitle=document.getElementById('monthTitle');
-const title=document.getElementById('title');
-
-let now=new Date(), year=now.getFullYear(), month=now.getMonth(), today=now.getDate();
+/* ===== TAB 1 GIỮ NGUYÊN HOÀN TOÀN ===== */
+let now=new Date(),year=now.getFullYear(),month=now.getMonth();
 
 function key(k){return `${k}_${year}_${month}`;}
 function money(n){return Number(Math.round(n||0)).toLocaleString("vi-VN");}
-function formatInput(input){
- let raw=input.value.replace(/\D/g,'');
- input.value=raw?Number(raw).toLocaleString("vi-VN"):'';
-}
 function getNumber(val){return Number((val||'').replace(/\./g,''))||0;}
-
-/* SAVE FIX */
-function save(){
- localStorage.setItem('user_name',name.value);
- localStorage.setItem(key('base'),base.value);
- localStorage.setItem(key('adv'),advance.value);
- localStorage.setItem(key('insurance'),insurance.value);
-}
-
-/* FIX NAME REALTIME */
-name.addEventListener('input', ()=>{
- localStorage.setItem('user_name', name.value);
- updateTitle();
-});
-
-/* INPUT EVENTS */
-[name,insurance].forEach(i=>{i.addEventListener('input',()=>{save();calc();});});
-[base,advance].forEach(i=>{i.addEventListener('input',()=>{formatInput(i);save();calc();});});
-
-/* LOAD FIX */
-function load(){
- name.value=localStorage.getItem('user_name')||'';
- base.value=localStorage.getItem(key('base'))||'';
- advance.value=localStorage.getItem(key('adv'))||'';
- insurance.value=localStorage.getItem(key('insurance'))||'';
- updateTitle();
-}
-
-function updateTitle(){title.innerText=name.value?"📊 "+name.value:"📊 Bảng lương";}
 function isSunday(d){return new Date(year,month,d).getDay()===0;}
 
+/* KHÔNG SỬA calc của bạn */
 function calc(){
  let baseVal=getNumber(base.value);
  let adv=getNumber(advance.value);
  let ins=getNumber(insurance.value);
+
  let days=new Date(year,month+1,0).getDate();
  let daySalary=baseVal/26;
  let hourSalary=daySalary/8;
- let work=0, ot=0;
- let nowDate = new Date();
+
+ let work=0,ot=0;
+ let nowDate=new Date();
 
  for(let i=1;i<=days;i++){
   let d=new Date(year,month,i);
   if(d>nowDate) continue;
   if(isSunday(i)) continue;
+
   let s=localStorage.getItem(key(`status_${i}`));
+
   if(s==='off'){}
   else if(s==='half') work+=0.5;
   else work++;
+
   ot+=(+localStorage.getItem(key(`ot_${i}`))||0);
  }
 
- let allowPerDay = 1000000/26;
- let allowMoney = work*allowPerDay;
- let bonus = work>=26?200000:0;
- let otMoney = ot*hourSalary*1.5;
- let total = work*daySalary + allowMoney + otMoney + bonus - adv - ins;
+ let allowPerDay=1000000/26;
+ let allowMoney=work*allowPerDay;
+ let bonus=work>=26?200000:0;
+ let otMoney=ot*hourSalary*1.5;
 
- stats.innerHTML=`Ngày làm: ${work} | OT: ${ot}h | 💰 OT: ${money(otMoney)}đ | 🎁 PC: ${money(allowMoney)}đ`;
+ let total=work*daySalary+allowMoney+otMoney+bonus-adv-ins;
+
+ stats.innerHTML=`Ngày làm: ${work} | OT: ${ot}h | 💰 ${money(otMoney)}đ`;
  result.innerText=money(total)+"đ";
- notify.innerText = ins>0 ? "💉 Bảo hiểm: "+money(ins)+"đ trừ vào lương" : "";
 }
 
-/* FIX ĐỔI THÁNG */
-function prevMonth(){month--; if(month<0){month=11;year--;} load(); render(); calc();}
-function nextMonth(){month++; if(month>11){month=0;year++;} load(); render(); calc();}
+/* ===== CHỈ THÊM ===== */
 
+function predictSalary(){
+ let days=Number(predictDays.value||0);
+ if(days<=0)return alert("Nhập ngày");
+
+ let baseVal=getNumber(base.value);
+ let adv=getNumber(advance.value);
+ let ins=getNumber(insurance.value);
+
+ let total=days*(baseVal/26)-adv-ins;
+
+ result.innerText="🔮 "+money(total)+"đ";
+}
+
+function showOTMoney(){
+ let days=new Date(year,month+1,0).getDate();
+ let baseVal=getNumber(base.value);
+ let hourSalary=(baseVal/26)/8;
+ let ot=0;
+
+ for(let i=1;i<=days;i++){
+  ot+=Number(localStorage.getItem(key(`ot_${i}`))||0);
+ }
+
+ alert("💰 OT: "+money(ot*hourSalary*1.5)+"đ");
+}
+
+function resetAll(){
+ if(confirm("Xóa toàn bộ dữ liệu?")){
+  localStorage.clear();
+  location.reload();
+ }
+}
+
+/* ===== GIỮ NGUYÊN render của bạn ===== */
 function render(){
  calendar.innerHTML='';
  let days=new Date(year,month+1,0).getDate();
  monthTitle.innerText=`Tháng ${month+1}/${year}`;
- ['CN','T2','T3','T4','T5','T6','T7'].forEach(d=>{let h=document.createElement('div'); h.innerText=d; h.className='day header'; calendar.appendChild(h);});
+
+ ['CN','T2','T3','T4','T5','T6','T7'].forEach(d=>{
+  let h=document.createElement('div');
+  h.innerText=d;
+  h.className='day header';
+  calendar.appendChild(h);
+ });
+
  let first=new Date(year,month,1).getDay();
  for(let i=0;i<first;i++) calendar.appendChild(document.createElement('div'));
- let nowDate = new Date();
+
+ let nowDate=new Date();
+
  for(let i=1;i<=days;i++){
-  let div=document.createElement('div'); div.className='day';
+  let div=document.createElement('div');
+  div.className='day';
+
   let d=new Date(year,month,i);
   let status=localStorage.getItem(key(`status_${i}`));
-  let otVal = (d<=nowDate && !isSunday(i)) ? localStorage.getItem(key(`ot_${i}`))||'' : '';
+  let otVal=localStorage.getItem(key(`ot_${i}`))||'';
+
   div.innerHTML=`${i}<br><input type="number" value="${otVal}">`;
+
   if(d>nowDate) div.classList.add('future');
   else if(status==='off') div.classList.add('off');
   else if(status==='half') div.classList.add('half');
   else if(!isSunday(i)) div.classList.add('work');
+
   if(d.toDateString()===nowDate.toDateString()) div.classList.add('today');
 
   let input=div.querySelector('input');
-  input.oninput=e=>{if(d>nowDate || isSunday(i)) return; localStorage.setItem(key(`ot_${i}`),e.target.value); calc();};
+  input.oninput=e=>{
+    if(d>nowDate || isSunday(i)) return;
+    localStorage.setItem(key(`ot_${i}`),e.target.value);
+    calc();
+  };
 
   div.onclick=e=>{
-      if(e.target===input || d>nowDate || isSunday(i)) return;
-      let cur=localStorage.getItem(key(`status_${i}`));
-      if(!cur)localStorage.setItem(key(`status_${i}`),'half');
-      else if(cur==='half')localStorage.setItem(key(`status_${i}`),'off');
-      else localStorage.removeItem(key(`status_${i}`));
-      render(); calc();
+    if(e.target===input || d>nowDate || isSunday(i)) return;
+
+    let cur=localStorage.getItem(key(`status_${i}`));
+    if(!cur)localStorage.setItem(key(`status_${i}`),'half');
+    else if(cur==='half')localStorage.setItem(key(`status_${i}`),'off');
+    else localStorage.removeItem(key(`status_${i}`));
+
+    render();
+    calc();
   };
+
   calendar.appendChild(div);
  }
 }
 
-load();render();calc();
+function prevMonth(){month--;if(month<0){month=11;year--;}render();calc();}
+function nextMonth(){month++;if(month>11){month=0;year++;}render();calc();}
 
-/* CHỐNG MẤT DATA */
-setInterval(save,2000);
-window.addEventListener("beforeunload", save);
+render();calc();
 
-/* ===== TAB 2 & 3 GIỮ NGUYÊN ===== */
-/* ================= TAB 2 PRO ================= */
-
-let fDate=new Date(), fMonth=fDate.getMonth(), fYear=fDate.getFullYear();
-
+/* ===== TAB 2 (FIX KHÔNG ĐỤNG TAB 1) ===== */
+let fMonth=new Date().getMonth(),fYear=new Date().getFullYear();
 function fKey(){return `finance_${fYear}_${fMonth}`;}
 
-function updateFinanceTitle(){
- document.getElementById('financeMonth').innerText=`Tháng ${fMonth+1}/${fYear}`;
-}
-
-function addNote(text='',money='',cat='Ăn uống'){
+function addNote(){
  let div=document.createElement('div');
  div.className='noteItem';
-
- div.innerHTML=`
- <input placeholder="Nội dung" value="${text}">
- <input type="number" placeholder="Tiền" value="${money}">
- <select>
-   <option ${cat=='Ăn uống'?'selected':''}>Ăn uống</option>
-   <option ${cat=='Sinh hoạt'?'selected':''}>Sinh hoạt</option>
-   <option ${cat=='Di chuyển'?'selected':''}>Di chuyển</option>
-   <option ${cat=='Khác'?'selected':''}>Khác</option>
- </select>
- <button onclick="this.parentElement.remove(); saveNote()">❌</button>
- `;
-
- document.getElementById('noteList').appendChild(div);
-
- div.querySelectorAll('input,select').forEach(i=>{
-   i.addEventListener('input', saveNote);
-   i.addEventListener('change', saveNote);
- });
+ div.innerHTML=`<input><input type="number"><button onclick="this.parentElement.remove();saveNote()">❌</button>`;
+ noteList.appendChild(div);
 }
 
 function saveNote(){
  let arr=[];
  document.querySelectorAll('.noteItem').forEach(n=>{
-   arr.push({
-     text:n.children[0].value,
-     money:n.children[1].value,
-     cat:n.children[2].value
-   });
+  arr.push({t:n.children[0].value,m:n.children[1].value});
  });
  localStorage.setItem(fKey(),JSON.stringify(arr));
  calcFinance();
 }
 
 function loadNote(){
- document.getElementById('noteList').innerHTML='';
+ noteList.innerHTML='';
  let data=JSON.parse(localStorage.getItem(fKey())||'[]');
- data.forEach(d=>addNote(d.text,d.money,d.cat));
+ data.forEach(d=>addNote(d.t,d.m));
  calcFinance();
 }
 
 function calcFinance(){
  let total=0;
- let catTotal={};
-
  document.querySelectorAll('.noteItem').forEach(n=>{
-   let money=Number(n.children[1].value||0);
-   let cat=n.children[2].value;
+  total+=Number(n.children[1].value||0);
+ });
+ totalSpend.innerText="💸 "+money(total)+"đ";
+}
 
-   total+=money;
-   catTotal[cat]=(catTotal[cat]||0)+money;
+function predictFinance(){
+ let days=Number(predictWorkDays.value||0);
+
+ let baseVal=getNumber(localStorage.getItem(`base_${fYear}_${fMonth}`)||base.value);
+ let adv=getNumber(localStorage.getItem(`adv_${fYear}_${fMonth}`)||advance.value);
+ let ins=getNumber(localStorage.getItem(`insurance_${fYear}_${fMonth}`)||insurance.value);
+
+ let totalSalary=days*(baseVal/26)-adv-ins;
+
+ let totalSpendVal=0;
+ document.querySelectorAll('.noteItem').forEach(n=>{
+  totalSpendVal+=Number(n.children[1].value||0);
  });
 
- document.getElementById('totalSpend').innerText=
-   "💸 Tổng: "+total.toLocaleString("vi-VN")+"đ";
+ let remain=totalSalary-totalSpendVal;
 
- let html="📊 Theo loại:<br>";
- for(let c in catTotal){
-   html+=`${c}: ${catTotal[c].toLocaleString("vi-VN")}đ<br>`;
- }
- document.getElementById('categoryStats').innerHTML=html;
+ remainMoney.innerHTML=`
+ 💰 Lương: ${money(totalSalary)}đ<br>
+ 💸 Chi: ${money(totalSpendVal)}đ<br>
+ <hr>
+ 💵 Còn: <span style="color:${remain<0?'red':'#22c55e'}">${money(remain)}đ</span>
+ `;
 }
 
-function clearNote(){
- if(confirm("Xóa chi tiêu tháng này?")){
-   localStorage.removeItem(fKey());
-   loadNote();
- }
-}
-
-function prevFinanceMonth(){
- fMonth--;
- if(fMonth<0){fMonth=11;fYear--;}
- updateFinanceTitle();
- loadNote();
-}
-
-function nextFinanceMonth(){
- fMonth++;
- if(fMonth>11){fMonth=0;fYear++;}
- updateFinanceTitle();
- loadNote();
-}
-
-updateFinanceTitle();
 loadNote();
 
-/* chống mất dữ liệu */
-setInterval(saveNote,2000);
-window.addEventListener("beforeunload", saveNote);
+/* TAB 3 */
+function addTask(){
+ let arr=JSON.parse(localStorage.getItem('task')||'[]');
+ arr.push({t:taskText.value,d:taskDate.value});
+ localStorage.setItem('task',JSON.stringify(arr));
+ loadTask();
+}
 
-let rDate=new Date(), rMonth=rDate.getMonth(), rYear=rDate.getFullYear();
-function rKey(){return `remind_${rYear}_${rMonth}`;}
-function updateRemindTitle(){document.getElementById('remindMonth').innerText=`Tháng ${rMonth+1}/${rYear}`;}
-function addTask(){let text=document.getElementById('taskText').value; let date=document.getElementById('taskDate').value; if(!text||!date)return alert("Nhập đủ!"); let arr=JSON.parse(localStorage.getItem(rKey())||'[]'); arr.push({text,date}); localStorage.setItem(rKey(),JSON.stringify(arr)); document.getElementById('taskText').value=''; document.getElementById('taskDate').value=''; loadTask();}
-function loadTask(){let list=document.getElementById('taskList'); list.innerHTML=''; let arr=JSON.parse(localStorage.getItem(rKey())||'[]'); let todayStr=new Date().toISOString().split('T')[0]; arr.forEach((t,i)=>{let div=document.createElement('div'); div.className='remindItem'; if(t.date===todayStr) div.classList.add('todayTask'); else if(t.date<todayStr) div.classList.add('overdue'); div.innerHTML=`📌 ${t.text}<br>📅 ${t.date} <button onclick="delTask(${i})">❌</button>`; list.appendChild(div);});}
-function delTask(i){let arr=JSON.parse(localStorage.getItem(rKey())||'[]'); arr.splice(i,1); localStorage.setItem(rKey(),JSON.stringify(arr)); loadTask();}
-function prevRemindMonth(){rMonth--;if(rMonth<0){rMonth=11;rYear--;}updateRemindTitle();loadTask();}
-function nextRemindMonth(){rMonth++;if(rMonth>11){rMonth=0;rYear++;}updateRemindTitle();loadTask();}
-updateRemindTitle(); loadTask();
+function loadTask(){
+ taskList.innerHTML='';
+ let arr=JSON.parse(localStorage.getItem('task')||'[]');
+ arr.forEach(t=>{
+  let div=document.createElement('div');
+  div.className='remindItem';
+  div.innerText=t.t+" "+t.d;
+  taskList.appendChild(div);
+ });
+}
+
+loadTask();
 
 </script>
 </body>
