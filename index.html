@@ -3,18 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PRO MAX FINAL SAFE</title>
+<title>PRO MAX FINAL STABLE</title>
 <meta name="theme-color" content="#0f172a">
 
 <style>
 body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .container{max-width:520px;margin:auto;padding:10px}
-
 .tabs{display:flex;gap:5px;margin-bottom:10px}
 .tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff}
 .active{background:#22c55e;color:#000}
 
-/* ===== GIỮ NGUYÊN ===== */
 .card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
 .grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px}
 input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
@@ -90,8 +88,12 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <div class="card">
 <div id="financeMonth"></div>
 
+<div class="row">
+<button class="btn" onclick="prevFinanceMonth()">⬅️</button>
+<button class="btn" onclick="nextFinanceMonth()">➡️</button>
+</div>
+
 <div class="big" id="totalSpend"></div>
-<div class="stat" id="categoryStats"></div>
 
 <div id="noteList"></div>
 
@@ -99,7 +101,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <button class="btn" onclick="clearNote()">🗑 Xóa</button>
 
 <input id="predictWorkDays" type="number" placeholder="Nhập ngày công">
-<button class="btn" onclick="predictFinance()">🔮 Dự đoán còn bao nhiêu</button>
+<button class="btn" onclick="predictFinance()">🔮 Dự đoán</button>
 
 <div class="big" id="remainMoney"></div>
 </div>
@@ -118,14 +120,24 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 
 <script>
 
-/* TAB SWITCH */
+/* TAB */
 function switchTab(n){
+
+ // ẩn/hiện tab
  tab1.style.display=n===1?'block':'none';
  tab2.style.display=n===2?'block':'none';
  tab3.style.display=n===3?'block':'none';
+
+ // reset màu tất cả nút
+ document.querySelectorAll('.tabBtn').forEach(btn=>{
+  btn.classList.remove('active');
+ });
+
+ // set nút đang chọn
+ document.querySelectorAll('.tabBtn')[n-1].classList.add('active');
 }
 
-/* ===== TAB 1 GIỮ NGUYÊN HOÀN TOÀN ===== */
+/* ===== TAB 1 (GIỮ NGUYÊN) ===== */
 let now=new Date(),year=now.getFullYear(),month=now.getMonth();
 
 function key(k){return `${k}_${year}_${month}`;}
@@ -133,7 +145,20 @@ function money(n){return Number(Math.round(n||0)).toLocaleString("vi-VN");}
 function getNumber(val){return Number((val||'').replace(/\./g,''))||0;}
 function isSunday(d){return new Date(year,month,d).getDay()===0;}
 
-/* KHÔNG SỬA calc của bạn */
+function saveData(){
+ localStorage.setItem('user_name', name.value);
+ localStorage.setItem(key('base'), base.value);
+ localStorage.setItem(key('adv'), advance.value);
+ localStorage.setItem(key('insurance'), insurance.value);
+}
+
+function loadData(){
+ name.value = localStorage.getItem('user_name') || '';
+ base.value = localStorage.getItem(key('base')) || '';
+ advance.value = localStorage.getItem(key('adv')) || '';
+ insurance.value = localStorage.getItem(key('insurance')) || '';
+}
+
 function calc(){
  let baseVal=getNumber(base.value);
  let adv=getNumber(advance.value);
@@ -171,8 +196,6 @@ function calc(){
  result.innerText=money(total)+"đ";
 }
 
-/* ===== CHỈ THÊM ===== */
-
 function predictSalary(){
  let days=Number(predictDays.value||0);
  if(days<=0)return alert("Nhập ngày");
@@ -182,7 +205,6 @@ function predictSalary(){
  let ins=getNumber(insurance.value);
 
  let total=days*(baseVal/26)-adv-ins;
-
  result.innerText="🔮 "+money(total)+"đ";
 }
 
@@ -206,7 +228,7 @@ function resetAll(){
  }
 }
 
-/* ===== GIỮ NGUYÊN render của bạn ===== */
+/* CALENDAR */
 function render(){
  calendar.innerHTML='';
  let days=new Date(year,month+1,0).getDate();
@@ -256,44 +278,47 @@ function render(){
     else if(cur==='half')localStorage.setItem(key(`status_${i}`),'off');
     else localStorage.removeItem(key(`status_${i}`));
 
-    loadData();
-render();
-calc();
-[name, base, advance, insurance].forEach(i=>{
- i.addEventListener('input', saveData);
-});
+    render();
+    calc();
   };
 
   calendar.appendChild(div);
  }
 }
 
-function prevMonth(){month--;if(month<0){month=11;year--;}render();calc();}
-function nextMonth(){month++;if(month>11){month=0;year++;}render();calc();}
+function prevMonth(){month--;if(month<0){month=11;year--;}loadData();render();calc();}
+function nextMonth(){month++;if(month>11){month=0;year++;}loadData();render();calc();}
 
-render();calc();
-function saveData(){
- localStorage.setItem('user_name', name.value);
- localStorage.setItem(key('base'), base.value);
- localStorage.setItem(key('adv'), advance.value);
- localStorage.setItem(key('insurance'), insurance.value);
-}
-function loadData(){
- name.value = localStorage.getItem('user_name') || '';
- base.value = localStorage.getItem(key('base')) || '';
- advance.value = localStorage.getItem(key('adv')) || '';
- insurance.value = localStorage.getItem(key('insurance')) || '';
-}
+loadData();
+render();
+calc();
 
-/* ===== TAB 2 (FIX KHÔNG ĐỤNG TAB 1) ===== */
+[name, base, advance, insurance].forEach(i=>{
+ i.addEventListener('input', saveData);
+});
+
+/* ===== TAB 2 PRO MAX VIP ===== */
+
 let fMonth=new Date().getMonth(),fYear=new Date().getFullYear();
 function fKey(){return `finance_${fYear}_${fMonth}`;}
 
-function addNote(){
+function updateFinanceHeader(){
+ financeMonth.innerHTML=`📅 Tháng ${fMonth+1}/${fYear}`;
+}
+
+function addNote(t='',m=''){
  let div=document.createElement('div');
  div.className='noteItem';
- div.innerHTML=`<input><input type="number"><button onclick="this.parentElement.remove();saveNote()">❌</button>`;
+ div.innerHTML=`
+ <input value="${t}">
+ <input type="number" value="${m}">
+ <button onclick="this.parentElement.remove();saveNote()">❌</button>
+ `;
  noteList.appendChild(div);
+
+ div.querySelectorAll('input').forEach(i=>{
+  i.addEventListener('input',saveNote);
+ });
 }
 
 function saveNote(){
@@ -310,6 +335,7 @@ function loadNote(){
  let data=JSON.parse(localStorage.getItem(fKey())||'[]');
  data.forEach(d=>addNote(d.t,d.m));
  calcFinance();
+ updateFinanceHeader();
 }
 
 function calcFinance(){
@@ -322,31 +348,51 @@ function calcFinance(){
 
 function predictFinance(){
  let days=Number(predictWorkDays.value||0);
+ if(days<=0)return alert("Nhập ngày công");
 
- let baseVal=getNumber(localStorage.getItem(`base_${fYear}_${fMonth}`)||base.value);
- let adv=getNumber(localStorage.getItem(`adv_${fYear}_${fMonth}`)||advance.value);
- let ins=getNumber(localStorage.getItem(`insurance_${fYear}_${fMonth}`)||insurance.value);
+ let baseVal=getNumber(base.value);
+ let adv=getNumber(advance.value);
+ let ins=getNumber(insurance.value);
 
- let totalSalary=days*(baseVal/26)-adv-ins;
+ let salary=days*(baseVal/26)-adv-ins;
 
- let totalSpendVal=0;
+ let spend=0;
  document.querySelectorAll('.noteItem').forEach(n=>{
-  totalSpendVal+=Number(n.children[1].value||0);
+  spend+=Number(n.children[1].value||0);
  });
 
- let remain=totalSalary-totalSpendVal;
+ let remain=salary-spend;
 
  remainMoney.innerHTML=`
- 💰 Lương: ${money(totalSalary)}đ<br>
- 💸 Chi: ${money(totalSpendVal)}đ<br>
+ 💰 Lương: ${money(salary)}đ<br>
+ 💸 Chi: ${money(spend)}đ<br>
  <hr>
  💵 Còn: <span style="color:${remain<0?'red':'#22c55e'}">${money(remain)}đ</span>
  `;
 }
 
+function clearNote(){
+ if(confirm("Xóa toàn bộ chi tiêu tháng này?")){
+  localStorage.removeItem(fKey());
+  loadNote();
+ }
+}
+
+function nextFinanceMonth(){
+ fMonth++;
+ if(fMonth>11){fMonth=0;fYear++;}
+ loadNote();
+}
+
+function prevFinanceMonth(){
+ fMonth--;
+ if(fMonth<0){fMonth=11;fYear--;}
+ loadNote();
+}
+
 loadNote();
 
-/* TAB 3 */
+/* ===== TAB 3 (GIỮ NGUYÊN) ===== */
 function addTask(){
  let arr=JSON.parse(localStorage.getItem('task')||'[]');
  arr.push({t:taskText.value,d:taskDate.value});
