@@ -256,8 +256,12 @@ function render(){
     else if(cur==='half')localStorage.setItem(key(`status_${i}`),'off');
     else localStorage.removeItem(key(`status_${i}`));
 
-    render();
-    calc();
+    loadData();
+render();
+calc();
+[name, base, advance, insurance].forEach(i=>{
+ i.addEventListener('input', saveData);
+});
   };
 
   calendar.appendChild(div);
@@ -268,6 +272,18 @@ function prevMonth(){month--;if(month<0){month=11;year--;}render();calc();}
 function nextMonth(){month++;if(month>11){month=0;year++;}render();calc();}
 
 render();calc();
+function saveData(){
+ localStorage.setItem('user_name', name.value);
+ localStorage.setItem(key('base'), base.value);
+ localStorage.setItem(key('adv'), advance.value);
+ localStorage.setItem(key('insurance'), insurance.value);
+}
+function loadData(){
+ name.value = localStorage.getItem('user_name') || '';
+ base.value = localStorage.getItem(key('base')) || '';
+ advance.value = localStorage.getItem(key('adv')) || '';
+ insurance.value = localStorage.getItem(key('insurance')) || '';
+}
 
 /* ===== TAB 2 (FIX KHÔNG ĐỤNG TAB 1) ===== */
 let fMonth=new Date().getMonth(),fYear=new Date().getFullYear();
