@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Phần mềm tính lương</title>
+  <title>Phần mềm tính lương & chi tiêu</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <style>
     :root{
@@ -99,6 +99,21 @@
     .salary-panel{display:none;border-top:1px solid var(--line);background:#fff}
     .salary-panel.open{display:block}
     .salary-panel .body{padding:16px}
+    .app-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .app-tab-btn{border:none;background:#e2e8f0;color:var(--ink);padding:12px 16px;border-radius:14px;cursor:pointer;font-weight:800}
+    .app-tab-btn.active{background:var(--primary);color:#fff;box-shadow:var(--shadow)}
+    .app-tab-panel{display:none}
+    .app-tab-panel.active{display:block}
+    .expense-item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line)}
+    .expense-item:last-child{border-bottom:none}
+    .expense-item-title{font-weight:700}
+    .expense-item small{color:var(--muted);display:block;margin-top:4px}
+    .expense-item-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .expense-delete-btn{border:none;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:12px;cursor:pointer;font-weight:700}
+    .empty-box{padding:14px;border:1px dashed var(--line);border-radius:14px;background:#f8fafc;color:var(--muted)}
+    .remaining-box{margin-top:12px;padding:16px;border-radius:16px;border:1px solid var(--line);background:#fff}
+    .remaining-box .value{margin-top:8px;font-size:24px;font-weight:800}
+    .remaining-box .formula{font-size:12px;color:var(--muted);margin-top:4px}
     @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
       .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -146,7 +161,7 @@
       <div class="brand">
         <div class="logo">₫</div>
         <div>
-          <h1>Phần mềm tính lương</h1>
+          <h1>Phần mềm tính lương & chi tiêu</h1>
           <div class="sub">HTML thuần • LocalStorage • PWA • GitHub Pages</div>
         </div>
       </div>
@@ -157,6 +172,12 @@
       </div>
     </div>
 
+    <div class="app-tabs">
+      <button class="app-tab-btn active" type="button" data-app-tab="salaryTab">Tab 1 • Tính lương</button>
+      <button class="app-tab-btn" type="button" data-app-tab="expenseTab">Tab 2 • Quản lý chi tiêu</button>
+    </div>
+
+    <div class="app-tab-panel active" id="salaryTab">
     <div class="grid">
       <div class="sidebar-only">
         <div class="card">
@@ -294,6 +315,62 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <div class="app-tab-panel" id="expenseTab">
+      <div class="card">
+        <div class="body">
+          <div class="toolbar">
+            <div>
+              <strong id="expenseMonthLabel">Chi tiêu tháng</strong>
+              <div class="muted" id="expenseEmployeeLabel"></div>
+            </div>
+            <div class="actions">
+              <button class="btn secondary" id="expensePrevMonthBtn">← Tháng trước</button>
+              <button class="btn secondary" id="expenseNextMonthBtn">Tháng sau →</button>
+            </div>
+          </div>
+          <div class="muted" style="font-size:12px">Tab này lấy trực tiếp lương dự đoán hiện tại từ Tab 1 để tính số tiền còn lại trong tháng đang chọn.</div>
+          <div class="stats" id="expenseStats" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="head">Thêm khoản chi trong tháng</div>
+        <div class="body">
+          <div class="field-grid">
+            <div class="field">
+              <label>Ngày chi</label>
+              <input id="expenseDateInput" type="date" />
+            </div>
+            <div class="field">
+              <label>Số tiền</label>
+              <input id="expenseAmountInput" class="money" inputmode="numeric" placeholder="0" />
+            </div>
+            <div class="field" style="grid-column:1 / -1">
+              <label>Ghi chú chi tiêu</label>
+              <input id="expenseNoteInput" placeholder="Ví dụ: ăn uống, xăng xe, mua đồ, tiền điện..." />
+            </div>
+          </div>
+
+          <div class="actions" style="margin-top:12px">
+            <button class="btn green" id="addExpenseBtn">+ Thêm khoản chi</button>
+            <button class="btn secondary" id="calcRemainingBtn">Tính tiền còn lại</button>
+            <button class="btn red" id="clearExpensesBtn">Xóa chi tiêu tháng</button>
+          </div>
+
+          <div class="footer-note">Tiền còn lại = Lương dự đoán - Tổng chi tiêu tháng.</div>
+          <div id="remainingBox"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="head">Danh sách chi tiêu tháng này</div>
+        <div class="body">
+          <div id="expenseList"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -323,12 +400,13 @@
     const fmt = (v) => VND.format(Math.round(Number(v || 0)));
     const money = (v) => `${fmt(v)} ₫`;
     const clone = (x) => JSON.parse(JSON.stringify(x));
+    const emptyExpenseDraft = () => ({ note:'', amount:'', date:'' });
 
     let state = loadState();
     let deferredPrompt = null;
 
     function defaultMonthData(date){
-      return { attendanceMap: autoAttendanceForCurrentMonth(date), otHours:'0', bonus:'0', projectedDays:'' };
+      return { attendanceMap: autoAttendanceForCurrentMonth(date), otHours:'0', bonus:'0', projectedDays:'', expenses:[], showRemainingResult:false };
     }
 
     function createEmployee(name='Nhân viên mới'){
@@ -350,11 +428,15 @@
         const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
         if(raw && raw.employees && raw.employees.length){
           raw.currentMonth = raw.currentMonth ? new Date(raw.currentMonth) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+          raw.activeTab = raw.activeTab || 'salaryTab';
+          raw.ui = raw.ui || {};
+          raw.ui.expenseDraft = raw.ui.expenseDraft || emptyExpenseDraft();
+          raw.employees = raw.employees.map(emp => ({ ...emp, monthlyData: emp.monthlyData || {} }));
           return raw;
         }
       }catch(e){}
       const emp = createEmployee('Nguyễn Văn A');
-      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1) };
+      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1), activeTab:'salaryTab', ui:{ expenseDraft: emptyExpenseDraft() } };
     }
 
     function saveState(){
@@ -420,6 +502,8 @@
       if(monthData.projectedDays == null) monthData.projectedDays = '';
       if(monthData.otHours == null) monthData.otHours = '0';
       if(monthData.bonus == null) monthData.bonus = '0';
+      if(!Array.isArray(monthData.expenses)) monthData.expenses = [];
+      if(monthData.showRemainingResult == null) monthData.showRemainingResult = false;
       return monthData;
     }
 
@@ -428,6 +512,42 @@
       if(!emp.monthlyData[key]) emp.monthlyData[key] = defaultMonthData(state.currentMonth);
       emp.monthlyData[key] = normalizeMonthData(emp.monthlyData[key]);
       return emp.monthlyData[key];
+    }
+
+    function pad2(v){
+      return String(v).padStart(2,'0');
+    }
+
+    function dateInputValue(date){
+      return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+    }
+
+    function getExpenseDraft(){
+      state.ui = state.ui || {};
+      state.ui.expenseDraft = state.ui.expenseDraft || emptyExpenseDraft();
+      return state.ui.expenseDraft;
+    }
+
+    function getSuggestedExpenseDate(){
+      const draft = getExpenseDraft();
+      if(draft.date) return draft.date;
+      const t = today();
+      if(sameMonth(state.currentMonth, t)) return dateInputValue(t);
+      return dateInputValue(new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth(), 1));
+    }
+
+    function calcExpenseSummary(emp){
+      const m = ensureMonthData(emp);
+      const c = calc(emp);
+      const expenses = Array.isArray(m.expenses) ? m.expenses : [];
+      const totalExpenses = expenses.reduce((sum, item) => sum + num(item.amount), 0);
+      const remaining = c.projectedNet - totalExpenses;
+      return {
+        totalExpenses,
+        remaining,
+        expenseCount: expenses.length,
+        projectedSalary: c.projectedNet
+      };
     }
 
     function setMoneyInputBehavior(id, getter, setter){
@@ -471,6 +591,36 @@
         m.projectedDays = parsed ? String(parsed) : '';
         e.target.value = m.projectedDays;
         saveState(); renderAll();
+      };
+    }
+
+    function bindExpenseInputs(){
+      const draft = getExpenseDraft();
+      const dateEl = qs('#expenseDateInput');
+      const amountEl = qs('#expenseAmountInput');
+      const noteEl = qs('#expenseNoteInput');
+
+      if(!draft.date) draft.date = getSuggestedExpenseDate();
+
+      dateEl.value = draft.date || '';
+      noteEl.value = draft.note || '';
+      amountEl.value = draft.amount ? fmt(draft.amount) : '';
+
+      dateEl.oninput = (e) => {
+        draft.date = e.target.value;
+        saveState();
+      };
+
+      noteEl.oninput = (e) => {
+        draft.note = e.target.value;
+        saveState();
+      };
+
+      amountEl.oninput = (e) => {
+        const digits = onlyDigits(e.target.value);
+        draft.amount = digits;
+        e.target.value = digits ? fmt(digits) : '';
+        saveState();
       };
     }
 
@@ -627,6 +777,140 @@
       `;
     }
 
+    function renderExpenseTab(){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      const summary = calcExpenseSummary(emp);
+
+      qs('#expenseMonthLabel').textContent = `Quản lý chi tiêu tháng ${state.currentMonth.getMonth()+1}/${state.currentMonth.getFullYear()}`;
+      qs('#expenseEmployeeLabel').textContent = `Nhân viên đang chọn: ${emp.name || 'Chưa đặt tên'}`;
+
+      qs('#expenseStats').innerHTML = `
+        <div class="stat"><div class="k">Khoản chi trong tháng</div><div class="v">${summary.expenseCount}</div></div>
+        <div class="stat"><div class="k">Tổng chi tiêu</div><div class="v">${money(summary.totalExpenses)}</div></div>
+        <div class="stat"><div class="k">Lương dự đoán hiện tại</div><div class="v">${money(summary.projectedSalary)}</div></div>
+        <div class="stat"><div class="k">Còn lại dự kiến</div><div class="v">${money(summary.remaining)}</div></div>
+      `;
+
+      const items = clone(m.expenses || []).sort((a,b) => {
+        const ad = `${a.date || ''} ${a.createdAt || ''}`;
+        const bd = `${b.date || ''} ${b.createdAt || ''}`;
+        return bd.localeCompare(ad);
+      });
+
+      if(!items.length){
+        qs('#expenseList').innerHTML = '<div class="empty-box">Chưa có khoản chi nào trong tháng này.</div>';
+      } else {
+        qs('#expenseList').innerHTML = items.map(item => `
+          <div class="expense-item">
+            <div>
+              <div class="expense-item-title">${escapeHtml(item.note || 'Khoản chi')}</div>
+              <small>Ngày chi: ${escapeHtml(item.date || '')}</small>
+            </div>
+            <div class="expense-item-right">
+              <strong>${money(num(item.amount))}</strong>
+              <button class="expense-delete-btn" type="button" data-expense-id="${item.id}">Xóa</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      qsa('[data-expense-id]').forEach(btn => {
+        btn.onclick = () => deleteExpense(btn.dataset.expenseId);
+      });
+
+      if(m.showRemainingResult){
+        const tone = summary.remaining < 0 ? 'minus' : 'plus';
+        qs('#remainingBox').innerHTML = `
+          <div class="remaining-box">
+            <div><strong>Kết quả tính tiền còn lại</strong></div>
+            <div class="formula">Lương dự đoán ${money(summary.projectedSalary)} - Tổng chi tiêu ${money(summary.totalExpenses)}</div>
+            <div class="value ${tone}">${money(summary.remaining)}</div>
+          </div>
+        `;
+      } else {
+        qs('#remainingBox').innerHTML = '<div class="empty-box" style="margin-top:12px">Bấm “Tính tiền còn lại” để chốt phép tính theo lương dự đoán hiện tại.</div>';
+      }
+
+      bindExpenseInputs();
+    }
+
+    function addExpense(){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      const draft = getExpenseDraft();
+      const note = String(draft.note || '').trim();
+      const amount = num(draft.amount);
+      const dateValue = draft.date || getSuggestedExpenseDate();
+
+      if(!note){
+        alert('Vui lòng nhập ghi chú chi tiêu.');
+        return;
+      }
+      if(!amount){
+        alert('Vui lòng nhập số tiền chi tiêu.');
+        return;
+      }
+      if(!dateValue){
+        alert('Vui lòng chọn ngày chi.');
+        return;
+      }
+
+      const picked = new Date(dateValue + 'T00:00:00');
+      if(!sameMonth(picked, state.currentMonth)){
+        alert('Ngày chi phải nằm trong đúng tháng đang xem.');
+        return;
+      }
+
+      m.expenses = Array.isArray(m.expenses) ? m.expenses : [];
+      m.expenses.unshift({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        note,
+        amount: String(amount),
+        date: dateValue,
+        createdAt: new Date().toISOString()
+      });
+      m.showRemainingResult = false;
+      state.ui.expenseDraft = emptyExpenseDraft();
+      state.ui.expenseDraft.date = getSuggestedExpenseDate();
+      saveState();
+      renderAll();
+    }
+
+    function deleteExpense(expenseId){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      const item = (m.expenses || []).find(x => x.id === expenseId);
+      if(!item) return;
+      if(!confirm(`Xóa khoản chi "${item.note}"?`)) return;
+      m.expenses = (m.expenses || []).filter(x => x.id !== expenseId);
+      m.showRemainingResult = false;
+      saveState();
+      renderAll();
+    }
+
+    function clearExpenses(){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      if(!(m.expenses || []).length){
+        alert('Tháng này chưa có khoản chi nào để xóa.');
+        return;
+      }
+      if(!confirm('Xóa toàn bộ chi tiêu của tháng này?')) return;
+      m.expenses = [];
+      m.showRemainingResult = false;
+      saveState();
+      renderAll();
+    }
+
+    function calculateRemaining(){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      m.showRemainingResult = true;
+      saveState();
+      renderAll();
+    }
+
     function escapeHtml(s){
       return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     }
@@ -652,6 +936,26 @@
       });
     }
 
+    function renderAppTabs(){
+      const activeTab = state.activeTab || 'salaryTab';
+      qsa('.app-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.appTab === activeTab);
+      });
+      qsa('.app-tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === activeTab);
+      });
+    }
+
+    function initAppTabs(){
+      qsa('.app-tab-btn').forEach(btn => {
+        btn.onclick = () => {
+          state.activeTab = btn.dataset.appTab;
+          saveState();
+          renderAppTabs();
+        };
+      });
+    }
+
     function renderAll(){
       const emp = getActiveEmployee();
       if(!emp) return;
@@ -663,7 +967,10 @@
       const c = calc(emp);
       renderCalcBox('#predictCalc', c, 'projected');
       renderCalcBox('#actualCalc', c, 'actual');
+      renderExpenseTab();
       initSalaryTabs();
+      initAppTabs();
+      renderAppTabs();
       saveState();
     }
 
@@ -745,6 +1052,9 @@
           <tr><td>Thuế</td><td>${Math.round(c.tax)}</td></tr>
           <tr><td>Ứng lương</td><td>${c.advance}</td></tr>
           <tr><td>Thực nhận</td><td>${Math.round(c.actualNet)}</td></tr>
+          <tr><td>Lương dự đoán</td><td>${Math.round(calcExpenseSummary(emp).projectedSalary)}</td></tr>
+          <tr><td>Tổng chi tiêu tháng</td><td>${Math.round(calcExpenseSummary(emp).totalExpenses)}</td></tr>
+          <tr><td>Tiền còn lại dự kiến</td><td>${Math.round(calcExpenseSummary(emp).remaining)}</td></tr>
         </table>`;
       const blob = new Blob([html], {type:'application/vnd.ms-excel'});
       const a = document.createElement('a');
@@ -769,6 +1079,11 @@
     qs('#nextMonthBtn').onclick = () => changeMonth(1);
     qs('#markTodayBtn').onclick = markToday;
     qs('#clearMonthBtn').onclick = clearMonth;
+    qs('#expensePrevMonthBtn').onclick = () => changeMonth(-1);
+    qs('#expenseNextMonthBtn').onclick = () => changeMonth(1);
+    qs('#addExpenseBtn').onclick = addExpense;
+    qs('#calcRemainingBtn').onclick = calculateRemaining;
+    qs('#clearExpensesBtn').onclick = clearExpenses;
     qs('#exportExcelBtn').onclick = exportExcel;
     qs('#exportPdfBtn').onclick = exportPdf;
 
@@ -793,7 +1108,6 @@
     }
 
     renderAll();
-    initSalaryTabs();
   </script>
 </body>
 </html>
