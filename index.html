@@ -114,6 +114,19 @@
     .remaining-box{margin-top:12px;padding:16px;border-radius:16px;border:1px solid var(--line);background:#fff}
     .remaining-box .value{margin-top:8px;font-size:24px;font-weight:800}
     .remaining-box .formula{font-size:12px;color:var(--muted);margin-top:4px}
+    .reminder-item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px dashed var(--line)}
+    .reminder-item:last-child{border-bottom:none}
+    .reminder-item-title{font-weight:800}
+    .reminder-item-meta{margin-top:6px;font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+    .reminder-item-note{margin-top:8px;font-size:13px;color:#334155;white-space:pre-wrap}
+    .reminder-item-right{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    .reminder-status{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid var(--line);background:#fff}
+    .reminder-status.pending{color:#1d4ed8;border-color:#93c5fd;background:#eff6ff}
+    .reminder-status.done{color:#047857;border-color:#86efac;background:#ecfdf5}
+    .reminder-status.overdue{color:#b45309;border-color:#fcd34d;background:#fffbeb}
+    .reminder-toggle-btn{border:none;background:#e0f2fe;color:#075985;padding:8px 12px;border-radius:12px;cursor:pointer;font-weight:700}
+    .reminder-toggle-btn.done{background:#ecfdf5;color:#065f46}
+    .reminder-delete-btn{border:none;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:12px;cursor:pointer;font-weight:700}
     @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
       .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -175,6 +188,7 @@
     <div class="app-tabs">
       <button class="app-tab-btn active" type="button" data-app-tab="salaryTab">Tab 1 • Tính lương</button>
       <button class="app-tab-btn" type="button" data-app-tab="expenseTab">Tab 2 • Quản lý chi tiêu</button>
+      <button class="app-tab-btn" type="button" data-app-tab="reminderTab">Tab 3 • Nhắc việc</button>
     </div>
 
     <div class="app-tab-panel active" id="salaryTab">
@@ -371,6 +385,61 @@
         </div>
       </div>
     </div>
+
+    <div class="app-tab-panel" id="reminderTab">
+      <div class="card">
+        <div class="body">
+          <div class="toolbar">
+            <div>
+              <strong>Nhắc việc cá nhân</strong>
+              <div class="muted">Ghi việc cần làm, ngày giờ nhắc và đánh dấu hoàn thành.</div>
+            </div>
+            <div class="actions">
+              <button class="btn secondary" id="fillTodayReminderBtn">Điền ngày hôm nay</button>
+              <button class="btn red" id="clearDoneRemindersBtn">Xóa việc đã xong</button>
+            </div>
+          </div>
+          <div class="stats" id="reminderStats" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="head">Thêm việc cần nhắc</div>
+        <div class="body">
+          <div class="field-grid">
+            <div class="field">
+              <label>Tên việc</label>
+              <input id="reminderTitleInput" placeholder="Ví dụ: đóng tiền trọ, gọi khách, họp nhóm..." />
+            </div>
+            <div class="field">
+              <label>Ngày nhắc</label>
+              <input id="reminderDateInput" type="date" />
+            </div>
+            <div class="field">
+              <label>Giờ nhắc</label>
+              <input id="reminderTimeInput" type="time" />
+            </div>
+            <div class="field" style="grid-column:1 / -1">
+              <label>Ghi chú</label>
+              <input id="reminderNoteInput" placeholder="Ghi chú thêm cho công việc này (không bắt buộc)" />
+            </div>
+          </div>
+
+          <div class="actions" style="margin-top:12px">
+            <button class="btn green" id="addReminderBtn">+ Thêm việc nhắc</button>
+          </div>
+
+          <div class="footer-note">Dữ liệu nhắc việc cũng tự lưu trên máy, tải lại trang không mất.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="head">Danh sách việc cần nhắc</div>
+        <div class="body">
+          <div id="reminderList"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -401,6 +470,7 @@
     const money = (v) => `${fmt(v)} ₫`;
     const clone = (x) => JSON.parse(JSON.stringify(x));
     const emptyExpenseDraft = () => ({ note:'', amount:'', date:'' });
+    const emptyReminderDraft = () => ({ title:'', note:'', date:'', time:'' });
 
     let state = loadState();
     let deferredPrompt = null;
@@ -431,12 +501,14 @@
           raw.activeTab = raw.activeTab || 'salaryTab';
           raw.ui = raw.ui || {};
           raw.ui.expenseDraft = raw.ui.expenseDraft || emptyExpenseDraft();
+          raw.ui.reminderDraft = raw.ui.reminderDraft || emptyReminderDraft();
+          raw.reminders = Array.isArray(raw.reminders) ? raw.reminders : [];
           raw.employees = raw.employees.map(emp => ({ ...emp, monthlyData: emp.monthlyData || {} }));
           return raw;
         }
       }catch(e){}
       const emp = createEmployee('Nguyễn Văn A');
-      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1), activeTab:'salaryTab', ui:{ expenseDraft: emptyExpenseDraft() } };
+      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1), activeTab:'salaryTab', reminders:[], ui:{ expenseDraft: emptyExpenseDraft(), reminderDraft: emptyReminderDraft() } };
     }
 
     function saveState(){
@@ -536,6 +608,18 @@
       return dateInputValue(new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth(), 1));
     }
 
+    function getReminderDraft(){
+      state.ui = state.ui || {};
+      state.ui.reminderDraft = state.ui.reminderDraft || emptyReminderDraft();
+      return state.ui.reminderDraft;
+    }
+
+    function getSuggestedReminderDate(){
+      const draft = getReminderDraft();
+      if(draft.date) return draft.date;
+      return dateInputValue(today());
+    }
+
     function calcExpenseSummary(emp){
       const m = ensureMonthData(emp);
       const c = calc(emp);
@@ -620,6 +704,38 @@
         const digits = onlyDigits(e.target.value);
         draft.amount = digits;
         e.target.value = digits ? fmt(digits) : '';
+        saveState();
+      };
+    }
+
+    function bindReminderInputs(){
+      const draft = getReminderDraft();
+      const titleEl = qs('#reminderTitleInput');
+      const dateEl = qs('#reminderDateInput');
+      const timeEl = qs('#reminderTimeInput');
+      const noteEl = qs('#reminderNoteInput');
+
+      if(!draft.date) draft.date = getSuggestedReminderDate();
+
+      titleEl.value = draft.title || '';
+      dateEl.value = draft.date || '';
+      timeEl.value = draft.time || '';
+      noteEl.value = draft.note || '';
+
+      titleEl.oninput = (e) => {
+        draft.title = e.target.value;
+        saveState();
+      };
+      dateEl.oninput = (e) => {
+        draft.date = e.target.value;
+        saveState();
+      };
+      timeEl.oninput = (e) => {
+        draft.time = e.target.value;
+        saveState();
+      };
+      noteEl.oninput = (e) => {
+        draft.note = e.target.value;
         saveState();
       };
     }
@@ -835,6 +951,155 @@
       bindExpenseInputs();
     }
 
+
+    function calcReminderSummary(){
+      const items = Array.isArray(state.reminders) ? state.reminders : [];
+      const todayStr = dateInputValue(today());
+      const pending = items.filter(item => !item.done).length;
+      const done = items.filter(item => !!item.done).length;
+      const todayCount = items.filter(item => !item.done && (item.date || '') === todayStr).length;
+      const overdue = items.filter(item => !item.done && item.date && item.date < todayStr).length;
+      return {
+        total: items.length,
+        pending,
+        done,
+        todayCount,
+        overdue
+      };
+    }
+
+    function reminderSortValue(item){
+      const statusRank = item.done ? 1 : 0;
+      const date = item.date || '9999-99-99';
+      const time = item.time || '99:99';
+      const created = item.createdAt || '';
+      return `${statusRank}|${date}|${time}|${created}`;
+    }
+
+    function reminderTone(item){
+      if(item.done) return 'done';
+      const todayStr = dateInputValue(today());
+      if(item.date && item.date < todayStr) return 'overdue';
+      return 'pending';
+    }
+
+    function renderReminderTab(){
+      const summary = calcReminderSummary();
+      const items = clone(state.reminders || []).sort((a,b) => reminderSortValue(a).localeCompare(reminderSortValue(b)));
+
+      qs('#reminderStats').innerHTML = `
+        <div class="stat"><div class="k">Tổng việc</div><div class="v">${summary.total}</div></div>
+        <div class="stat"><div class="k">Chưa xong</div><div class="v">${summary.pending}</div></div>
+        <div class="stat"><div class="k">Việc hôm nay</div><div class="v">${summary.todayCount}</div></div>
+        <div class="stat"><div class="k">Quá hạn</div><div class="v">${summary.overdue}</div></div>
+      `;
+
+      if(!items.length){
+        qs('#reminderList').innerHTML = '<div class="empty-box">Chưa có việc cần nhắc nào.</div>';
+      } else {
+        qs('#reminderList').innerHTML = items.map(item => {
+          const tone = reminderTone(item);
+          const label = tone === 'done' ? 'Đã xong' : (tone === 'overdue' ? 'Quá hạn' : 'Đang chờ');
+          const when = [item.date || 'Chưa có ngày', item.time || 'Chưa có giờ'].join(' • ');
+          return `
+            <div class="reminder-item">
+              <div>
+                <div class="reminder-item-title">${escapeHtml(item.title || 'Việc cần nhắc')}</div>
+                <div class="reminder-item-meta">
+                  <span>${escapeHtml(when)}</span>
+                  <span class="reminder-status ${tone}">${label}</span>
+                </div>
+                ${item.note ? `<div class="reminder-item-note">${escapeHtml(item.note)}</div>` : ''}
+              </div>
+              <div class="reminder-item-right">
+                <button class="reminder-toggle-btn ${item.done ? 'done' : ''}" type="button" data-reminder-toggle="${item.id}">${item.done ? 'Mở lại' : 'Đánh dấu xong'}</button>
+                <button class="reminder-delete-btn" type="button" data-reminder-delete="${item.id}">Xóa</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      qsa('[data-reminder-toggle]').forEach(btn => {
+        btn.onclick = () => toggleReminderDone(btn.dataset.reminderToggle);
+      });
+      qsa('[data-reminder-delete]').forEach(btn => {
+        btn.onclick = () => deleteReminder(btn.dataset.reminderDelete);
+      });
+
+      bindReminderInputs();
+    }
+
+    function addReminder(){
+      state.reminders = Array.isArray(state.reminders) ? state.reminders : [];
+      const draft = getReminderDraft();
+      const title = String(draft.title || '').trim();
+      const note = String(draft.note || '').trim();
+      const date = draft.date || getSuggestedReminderDate();
+      const time = draft.time || '';
+
+      if(!title){
+        alert('Vui lòng nhập tên việc cần nhắc.');
+        return;
+      }
+      if(!date){
+        alert('Vui lòng chọn ngày nhắc.');
+        return;
+      }
+
+      state.reminders.unshift({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        title,
+        note,
+        date,
+        time,
+        done:false,
+        createdAt:new Date().toISOString()
+      });
+
+      state.ui.reminderDraft = emptyReminderDraft();
+      state.ui.reminderDraft.date = getSuggestedReminderDate();
+      saveState();
+      renderAll();
+    }
+
+    function toggleReminderDone(reminderId){
+      const item = (state.reminders || []).find(x => x.id === reminderId);
+      if(!item) return;
+      item.done = !item.done;
+      item.updatedAt = new Date().toISOString();
+      saveState();
+      renderAll();
+    }
+
+    function deleteReminder(reminderId){
+      const item = (state.reminders || []).find(x => x.id === reminderId);
+      if(!item) return;
+      if(!confirm(`Xóa việc "${item.title}"?`)) return;
+      state.reminders = (state.reminders || []).filter(x => x.id !== reminderId);
+      saveState();
+      renderAll();
+    }
+
+    function fillTodayReminderDate(){
+      const draft = getReminderDraft();
+      draft.date = dateInputValue(today());
+      saveState();
+      renderAll();
+    }
+
+    function clearDoneReminders(){
+      const doneCount = (state.reminders || []).filter(x => x.done).length;
+      if(!doneCount){
+        alert('Chưa có việc đã xong để xóa.');
+        return;
+      }
+      if(!confirm(`Xóa ${doneCount} việc đã hoàn thành?`)) return;
+      state.reminders = (state.reminders || []).filter(x => !x.done);
+      saveState();
+      renderAll();
+    }
+
     function addExpense(){
       const emp = getActiveEmployee();
       const m = ensureMonthData(emp);
@@ -968,6 +1233,7 @@
       renderCalcBox('#predictCalc', c, 'projected');
       renderCalcBox('#actualCalc', c, 'actual');
       renderExpenseTab();
+      renderReminderTab();
       initSalaryTabs();
       initAppTabs();
       renderAppTabs();
@@ -1084,6 +1350,9 @@
     qs('#addExpenseBtn').onclick = addExpense;
     qs('#calcRemainingBtn').onclick = calculateRemaining;
     qs('#clearExpensesBtn').onclick = clearExpenses;
+    qs('#addReminderBtn').onclick = addReminder;
+    qs('#fillTodayReminderBtn').onclick = fillTodayReminderDate;
+    qs('#clearDoneRemindersBtn').onclick = clearDoneReminders;
     qs('#exportExcelBtn').onclick = exportExcel;
     qs('#exportPdfBtn').onclick = exportPdf;
 
