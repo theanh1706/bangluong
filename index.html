@@ -127,6 +127,13 @@
     .reminder-toggle-btn{border:none;background:#e0f2fe;color:#075985;padding:8px 12px;border-radius:12px;cursor:pointer;font-weight:700}
     .reminder-toggle-btn.done{background:#ecfdf5;color:#065f46}
     .reminder-delete-btn{border:none;background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:12px;cursor:pointer;font-weight:700}
+    .summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .summary-stack{display:flex;flex-direction:column;gap:14px}
+    .summary-list{display:flex;flex-direction:column;gap:0}
+    .summary-line{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line)}
+    .summary-line:last-child{border-bottom:none}
+    .summary-line strong{font-size:15px}
+    .summary-line small{display:block;color:var(--muted);margin-top:3px}
     @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
       .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -143,7 +150,7 @@
       .card .body{padding:12px}
       .card .head{padding:14px 14px 6px}
       .stats{grid-template-columns:1fr}
-      .field-grid,.mini-grid,.predict-box,.calc-box{grid-template-columns:1fr !important}
+      .field-grid,.mini-grid,.predict-box,.calc-box,.summary-grid{grid-template-columns:1fr !important}
       .salary-tab-btn{padding:14px}
       .salary-panel .body{padding:14px}
       .calendar{gap:6px;min-width:520px}
@@ -189,6 +196,7 @@
       <button class="app-tab-btn active" type="button" data-app-tab="salaryTab">Tab 1 • Tính lương</button>
       <button class="app-tab-btn" type="button" data-app-tab="expenseTab">Tab 2 • Quản lý chi tiêu</button>
       <button class="app-tab-btn" type="button" data-app-tab="reminderTab">Tab 3 • Nhắc việc</button>
+      <button class="app-tab-btn" type="button" data-app-tab="overviewTab">Tab 4 • Tổng quan tháng</button>
     </div>
 
     <div class="app-tab-panel active" id="salaryTab">
@@ -263,7 +271,7 @@
               </div>
               <div class="field">
                 <label>Dự đoán số ngày làm</label>
-                <input id="projectedDaysInput" inputmode="decimal" placeholder="Ví dụ: 7,5" />
+                <input id="projectedDaysInput" inputmode="numeric" placeholder="0" />
               </div>
               <div class="field">
                 <label>Lưu dữ liệu</label>
@@ -437,6 +445,59 @@
         <div class="head">Danh sách việc cần nhắc</div>
         <div class="body">
           <div id="reminderList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-tab-panel" id="overviewTab">
+      <div class="card">
+        <div class="body">
+          <div class="toolbar">
+            <div>
+              <strong id="overviewMonthLabel">Tổng quan tháng</strong>
+              <div class="muted" id="overviewEmployeeLabel"></div>
+            </div>
+            <div class="actions">
+              <button class="btn secondary" id="overviewPrevMonthBtn">← Tháng trước</button>
+              <button class="btn secondary" id="overviewNextMonthBtn">Tháng sau →</button>
+            </div>
+          </div>
+          <div class="muted" style="font-size:12px">Tab này chỉ tổng hợp dữ liệu từ các tab hiện có để xem nhanh toàn cảnh tháng đang chọn.</div>
+          <div class="stats" id="overviewStats" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <div class="summary-grid" style="margin-top:14px">
+        <div class="summary-stack">
+          <div class="card">
+            <div class="head">Lương & ngày công</div>
+            <div class="body">
+              <div class="summary-list" id="overviewSalaryList"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="head">Chi tiêu & số dư</div>
+            <div class="body">
+              <div class="summary-list" id="overviewExpenseList"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-stack">
+          <div class="card">
+            <div class="head">Nhắc việc trong tháng</div>
+            <div class="body">
+              <div class="summary-list" id="overviewReminderList"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="head">Tóm tắt nhanh</div>
+            <div class="body">
+              <div class="summary-list" id="overviewQuickList"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -669,18 +730,11 @@
       qs('#otHoursInput').value = m.otHours || '';
       qs('#otHoursInput').oninput = e => { m.otHours = onlyDigits(e.target.value); e.target.value = m.otHours; saveState(); renderAll(); };
 
-      qs('#projectedDaysInput').value = m.projectedDays ? fmtHalf(m.projectedDays) : '';
+      qs('#projectedDaysInput').value = m.projectedDays || '';
       qs('#projectedDaysInput').oninput = e => {
-        let raw = cleanDecimalInput(e.target.value);
-        if(raw.startsWith('.')) raw = '0' + raw;
-        m.projectedDays = raw.replace('.', ',');
-        e.target.value = m.projectedDays;
-        saveState();
-      };
-      qs('#projectedDaysInput').onblur = e => {
-        const parsed = parseHalfDayValue(m.projectedDays || '', workingDaysInMonth(state.currentMonth));
+        const parsed = parseHalfDayValue(e.target.value, workingDaysInMonth(state.currentMonth));
         m.projectedDays = parsed ? String(parsed) : '';
-        e.target.value = m.projectedDays ? fmtHalf(m.projectedDays) : '';
+        e.target.value = m.projectedDays;
         saveState(); renderAll();
       };
     }
@@ -990,6 +1044,82 @@
       return 'pending';
     }
 
+    function getMonthReminderSummary(){
+      const monthPrefix = monthKey(state.currentMonth);
+      const items = Array.isArray(state.reminders) ? state.reminders : [];
+      const inMonth = items.filter(item => String(item.date || '').slice(0,7) === monthPrefix);
+      const pending = inMonth.filter(item => !item.done);
+      const done = inMonth.filter(item => !!item.done);
+      const overdue = pending.filter(item => item.date && item.date < dateInputValue(today()));
+      const upcoming = clone(pending).sort((a,b) => reminderSortValue(a).localeCompare(reminderSortValue(b))).slice(0,5);
+      return { total: inMonth.length, pending: pending.length, done: done.length, overdue: overdue.length, upcoming };
+    }
+
+    function renderOverviewTab(){
+      const emp = getActiveEmployee();
+      if(!emp) return;
+      const c = calc(emp);
+      const expense = calcExpenseSummary(emp);
+      const reminder = getMonthReminderSummary();
+      const monthLabel = `Tháng ${state.currentMonth.getMonth()+1}/${state.currentMonth.getFullYear()}`;
+      const remainingDays = Math.max(c.plannedDays - c.actualDays, 0);
+      const workProgress = c.plannedDays ? Math.min((c.actualDays / c.plannedDays) * 100, 100) : 0;
+
+      qs('#overviewMonthLabel').textContent = `Tổng quan ${monthLabel}`;
+      qs('#overviewEmployeeLabel').textContent = `Nhân viên đang chọn: ${emp.name || 'Chưa đặt tên'}`;
+
+      qs('#overviewStats').innerHTML = `
+        <div class="stat"><div class="k">Lương thực tế hiện tại</div><div class="v">${money(c.actualNet)}</div></div>
+        <div class="stat"><div class="k">Lương dự đoán</div><div class="v">${money(c.projectedNet)}</div></div>
+        <div class="stat"><div class="k">Tổng chi tiêu</div><div class="v">${money(expense.totalExpenses)}</div></div>
+        <div class="stat"><div class="k">Còn lại dự kiến</div><div class="v">${money(expense.remaining)}</div></div>
+      `;
+
+      qs('#overviewSalaryList').innerHTML = `
+        <div class="summary-line"><div><strong>Ngày công dự kiến</strong><small>Số ngày làm chuẩn của tháng đang chọn</small></div><div>${fmtHalf(c.plannedDays)} ngày</div></div>
+        <div class="summary-line"><div><strong>Ngày đã check</strong><small>Tiến độ chấm công hiện tại</small></div><div>${fmtHalf(c.actualDays)} ngày</div></div>
+        <div class="summary-line"><div><strong>Ngày nhập dự đoán</strong><small>Số ngày dùng để tính lương dự đoán</small></div><div>${fmtHalf(c.projectedDays)} ngày</div></div>
+        <div class="summary-line"><div><strong>Lương / ngày</strong><small>Lương cơ bản chia cho ngày công dự kiến</small></div><div>${money(c.dailySalary)}</div></div>
+        <div class="summary-line"><div><strong>OT quy đổi</strong><small>${c.otHours} giờ OT x1.5</small></div><div>${money(c.otAmount)}</div></div>
+        <div class="summary-line"><div><strong>Thưởng thêm hiện nhập</strong><small>Khoản thưởng tay ở Tab 1</small></div><div>${money(c.manualBonus)}</div></div>
+      `;
+
+      qs('#overviewExpenseList').innerHTML = `
+        <div class="summary-line"><div><strong>Số khoản chi</strong><small>Tổng số khoản đã ghi trong tháng</small></div><div>${expense.expenseCount} khoản</div></div>
+        <div class="summary-line"><div><strong>Tổng chi tiêu</strong><small>Cộng tất cả khoản chi của tháng này</small></div><div>${money(expense.totalExpenses)}</div></div>
+        <div class="summary-line"><div><strong>Lương dự đoán đang dùng</strong><small>Lấy trực tiếp từ Tab 1</small></div><div>${money(expense.projectedSalary)}</div></div>
+        <div class="summary-line"><div><strong>Số dư còn lại</strong><small>Lương dự đoán trừ chi tiêu tháng</small></div><div class="${expense.remaining < 0 ? 'minus' : 'plus'}">${money(expense.remaining)}</div></div>
+        <div class="summary-line"><div><strong>Ứng lương đã nhập</strong><small>Khoản trừ cố định hiện tại</small></div><div>${money(c.advance)}</div></div>
+        <div class="summary-line"><div><strong>Bảo hiểm + Thuế</strong><small>Theo cấu hình hiện tại của nhân viên</small></div><div>${money((c.projectedDays ? c.pInsurance : c.insurance) + (c.projectedDays ? c.pTax : c.tax))}</div></div>
+      `;
+
+      if(!reminder.upcoming.length){
+        qs('#overviewReminderList').innerHTML = `
+          <div class="summary-line"><div><strong>Tổng việc trong tháng</strong><small>Việc có ngày nằm trong tháng đang xem</small></div><div>${reminder.total}</div></div>
+          <div class="summary-line"><div><strong>Chưa có việc sắp tới</strong><small>Bạn có thể thêm bên Tab 3 • Nhắc việc</small></div><div>—</div></div>
+          <div class="summary-line"><div><strong>Đã xong</strong><small>Số việc đã hoàn thành trong tháng</small></div><div>${reminder.done}</div></div>
+          <div class="summary-line"><div><strong>Quá hạn</strong><small>Việc chưa xong và đã quá ngày</small></div><div>${reminder.overdue}</div></div>
+        `;
+      } else {
+        qs('#overviewReminderList').innerHTML = `
+          <div class="summary-line"><div><strong>Tổng việc trong tháng</strong><small>Việc có ngày nằm trong tháng đang xem</small></div><div>${reminder.total}</div></div>
+          <div class="summary-line"><div><strong>Chưa xong</strong><small>Số việc còn đang chờ xử lý</small></div><div>${reminder.pending}</div></div>
+          <div class="summary-line"><div><strong>Đã xong</strong><small>Số việc đã hoàn thành trong tháng</small></div><div>${reminder.done}</div></div>
+          <div class="summary-line"><div><strong>Quá hạn</strong><small>Việc chưa xong và đã quá ngày</small></div><div>${reminder.overdue}</div></div>
+        ` + reminder.upcoming.map(item => `
+          <div class="summary-line"><div><strong>${escapeHtml(item.title || 'Việc cần nhắc')}</strong><small>${escapeHtml(item.note || 'Không có ghi chú')}</small></div><div>${escapeHtml([item.date || 'Chưa có ngày', item.time || 'Chưa có giờ'].join(' • '))}</div></div>
+        `).join('');
+      }
+
+      qs('#overviewQuickList').innerHTML = `
+        <div class="summary-line"><div><strong>Tiến độ công tháng</strong><small>${fmtHalf(c.actualDays)} / ${fmtHalf(c.plannedDays)} ngày</small></div><div>${fmt(workProgress)}%</div></div>
+        <div class="summary-line"><div><strong>Còn thiếu để đủ kế hoạch</strong><small>Phần ngày công chưa check đủ</small></div><div>${fmtHalf(remainingDays)} ngày</div></div>
+        <div class="summary-line"><div><strong>Chênh lệch dự đoán - thực tế</strong><small>Lương dự đoán trừ lương đã check hiện tại</small></div><div>${money(c.projectedNet - c.actualNet)}</div></div>
+        <div class="summary-line"><div><strong>Tỷ lệ chi tiêu / lương dự đoán</strong><small>Giúp nhìn nhanh mức tiêu trong tháng</small></div><div>${c.projectedNet > 0 ? fmt((expense.totalExpenses / c.projectedNet) * 100) : 0}%</div></div>
+        <div class="summary-line"><div><strong>Đánh giá nhanh</strong><small>${expense.remaining < 0 ? 'Chi tiêu đang vượt lương dự đoán' : 'Tạm còn trong mức an toàn của tháng'}</small></div><div class="${expense.remaining < 0 ? 'minus' : 'plus'}">${expense.remaining < 0 ? 'Cần siết chi' : 'Ổn'}</div></div>
+      `;
+    }
+
     function renderReminderTab(){
       const summary = calcReminderSummary();
       const items = clone(state.reminders || []).sort((a,b) => reminderSortValue(a).localeCompare(reminderSortValue(b)));
@@ -1241,6 +1371,7 @@
       renderCalcBox('#actualCalc', c, 'actual');
       renderExpenseTab();
       renderReminderTab();
+      renderOverviewTab();
       initSalaryTabs();
       initAppTabs();
       renderAppTabs();
@@ -1354,6 +1485,8 @@
     qs('#clearMonthBtn').onclick = clearMonth;
     qs('#expensePrevMonthBtn').onclick = () => changeMonth(-1);
     qs('#expenseNextMonthBtn').onclick = () => changeMonth(1);
+    qs('#overviewPrevMonthBtn').onclick = () => changeMonth(-1);
+    qs('#overviewNextMonthBtn').onclick = () => changeMonth(1);
     qs('#addExpenseBtn').onclick = addExpense;
     qs('#calcRemainingBtn').onclick = calculateRemaining;
     qs('#clearExpensesBtn').onclick = clearExpenses;
