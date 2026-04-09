@@ -403,10 +403,13 @@
               <div class="muted">Ghi việc cần làm, ngày giờ nhắc và đánh dấu hoàn thành.</div>
             </div>
             <div class="actions">
+              <button class="btn secondary" id="enableReminderNotifyBtn">Bật thông báo</button>
+              <button class="btn secondary" id="testReminderNotifyBtn">Test thông báo</button>
               <button class="btn secondary" id="fillTodayReminderBtn">Điền ngày hôm nay</button>
               <button class="btn red" id="clearDoneRemindersBtn">Xóa việc đã xong</button>
             </div>
           </div>
+          <div id="reminderNotifyStatus" class="empty-box" style="margin-top:14px"></div>
           <div class="stats" id="reminderStats" style="margin-top:14px"></div>
         </div>
       </div>
@@ -437,7 +440,7 @@
             <button class="btn green" id="addReminderBtn">+ Thêm việc nhắc</button>
           </div>
 
-          <div class="footer-note">Dữ liệu nhắc việc cũng tự lưu trên máy, tải lại trang không mất.</div>
+          <div class="footer-note">Dữ liệu nhắc việc cũng tự lưu trên máy, tải lại trang không mất. Thông báo sẽ chạy tốt khi app đang mở trên trình duyệt hoặc đang chạy dạng PWA; nếu đóng hẳn app/web thì web tĩnh không thể tự đánh thức để nhắc đúng giờ.</div>
         </div>
       </div>
 
@@ -532,9 +535,12 @@
     const clone = (x) => JSON.parse(JSON.stringify(x));
     const emptyExpenseDraft = () => ({ note:'', amount:'', date:'' });
     const emptyReminderDraft = () => ({ title:'', note:'', date:'', time:'' });
+    const REMINDER_NOTIFY_DEFAULT_TIME = '09:00';
+    const REMINDER_CHECK_INTERVAL_MS = 30000;
 
     let state = loadState();
     let deferredPrompt = null;
+    let reminderCheckTimer = null;
 
     function defaultMonthData(date){
       return { attendanceMap: autoAttendanceForCurrentMonth(date), otHours:'0', bonus:'0', projectedDays:'', expenses:[], showRemainingResult:false };
@@ -563,13 +569,15 @@
           raw.ui = raw.ui || {};
           raw.ui.expenseDraft = raw.ui.expenseDraft || emptyExpenseDraft();
           raw.ui.reminderDraft = raw.ui.reminderDraft || emptyReminderDraft();
+          raw.ui.reminderNotifications = raw.ui.reminderNotifications || { fired:{} };
+          raw.ui.reminderNotifications.fired = raw.ui.reminderNotifications.fired || {};
           raw.reminders = Array.isArray(raw.reminders) ? raw.reminders : [];
           raw.employees = raw.employees.map(emp => ({ ...emp, monthlyData: emp.monthlyData || {} }));
           return raw;
         }
       }catch(e){}
       const emp = createEmployee('Nguyễn Văn A');
-      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1), activeTab:'salaryTab', reminders:[], ui:{ expenseDraft: emptyExpenseDraft(), reminderDraft: emptyReminderDraft() } };
+      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1), activeTab:'salaryTab', reminders:[], ui:{ expenseDraft: emptyExpenseDraft(), reminderDraft: emptyReminderDraft(), reminderNotifications:{ fired:{} } } };
     }
 
     function saveState(){
@@ -679,6 +687,230 @@
       const draft = getReminderDraft();
       if(draft.date) return draft.date;
       return dateInputValue(today());
+    }
+
+
+    function getReminderNotificationStore(){
+      state.ui = state.ui || {};
+      state.ui.reminderNotifications = state.ui.reminderNotifications || { fired:{} };
+      state.ui.reminderNotifications.fired = state.ui.reminderNotifications.fired || {};
+      return state.ui.reminderNotifications;
+    }
+
+    function getNotificationPermissionState(){
+      if(typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
+      return Notification.permission || 'default';
+    }
+
+    function getReminderNotificationInfo(){
+      const permission = getNotificationPermissionState();
+      if(permission === 'granted'){
+        return {
+          permission,
+          title:'Thông báo đang bật',
+          detail:'Khi tới giờ nhắc, app sẽ hiện thông báo trình duyệt nếu web/PWA đang còn mở.',
+          tone:'plus'
+        };
+      }
+      if(permission === 'denied'){
+        return {
+          permission,
+          title:'Thông báo đang bị chặn',
+          detail:'Bạn cần mở quyền Notifications của trang web này trong cài đặt trình duyệt rồi tải lại app.',
+          tone:'minus'
+        };
+      }
+      if(permission === 'unsupported'){
+        return {
+          permission,
+          title:'Trình duyệt chưa hỗ trợ Notification',
+          detail:'Thiết bị hoặc trình duyệt hiện tại không hỗ trợ thông báo trình duyệt cho app này.',
+          tone:'minus'
+        };
+      }
+      return {
+        permission,
+        title:'Bạn chưa bật thông báo',
+        detail:'Bấm “Bật thông báo” để cho phép app nhắc việc đúng giờ khi web/PWA đang mở.',
+        tone:'muted'
+      };
+    }
+
+    function getReminderScheduledAt(item){
+      if(!item || !item.date) return null;
+      const time = /^\d{2}:\d{2}$/.test(String(item.time || '')) ? item.time : REMINDER_NOTIFY_DEFAULT_TIME;
+      const dt = new Date(`${item.date}T${time}:00`);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    }
+
+    function getReminderNotificationKey(item){
+      const scheduled = getReminderScheduledAt(item);
+      return `${item.id}|${scheduled ? scheduled.toISOString() : `${item.date || ''}T${item.time || REMINDER_NOTIFY_DEFAULT_TIME}`}`;
+    }
+
+    function clearReminderNotificationFlag(reminderId){
+      const store = getReminderNotificationStore();
+      Object.keys(store.fired).forEach(key => {
+        if(key.startsWith(`${reminderId}|`)) delete store.fired[key];
+      });
+    }
+
+    function cleanupReminderNotificationStore(){
+      const items = Array.isArray(state.reminders) ? state.reminders : [];
+      const activeIds = new Set(items.filter(item => !item.done).map(item => item.id));
+      const store = getReminderNotificationStore();
+      let changed = false;
+      Object.keys(store.fired).forEach(key => {
+        const reminderId = key.split('|')[0];
+        if(!activeIds.has(reminderId)){
+          delete store.fired[key];
+          changed = true;
+        }
+      });
+      return changed;
+    }
+
+    function getDuePendingReminders(now = new Date()){
+      const items = Array.isArray(state.reminders) ? state.reminders : [];
+      return items.filter(item => {
+        if(item.done) return false;
+        const scheduled = getReminderScheduledAt(item);
+        if(!scheduled) return false;
+        return scheduled.getTime() <= now.getTime();
+      }).sort((a,b) => {
+        const at = getReminderScheduledAt(a)?.getTime() || 0;
+        const bt = getReminderScheduledAt(b)?.getTime() || 0;
+        return at - bt;
+      });
+    }
+
+    async function requestReminderNotificationPermission(){
+      const permission = getNotificationPermissionState();
+      if(permission === 'unsupported'){
+        alert('Thiết bị hoặc trình duyệt này chưa hỗ trợ thông báo.');
+        return permission;
+      }
+      if(permission === 'denied'){
+        alert('Thông báo đang bị chặn. Hãy mở quyền Notifications cho trang web này trong cài đặt trình duyệt rồi tải lại app.');
+        return permission;
+      }
+      if(permission === 'granted') return permission;
+      const result = await Notification.requestPermission();
+      renderReminderNotificationStatus();
+      if(result === 'granted'){
+        await checkReminderNotifications(true);
+      }
+      return result;
+    }
+
+    async function showReminderBrowserNotification(title, body, options = {}){
+      const permission = getNotificationPermissionState();
+      if(permission !== 'granted') return false;
+      const payload = {
+        body,
+        tag: options.tag || 'salary-reminder',
+        renotify: true,
+        requireInteraction: false,
+        data: options.data || {}
+      };
+      try{
+        if('serviceWorker' in navigator){
+          const registration = await navigator.serviceWorker.getRegistration();
+          if(registration && registration.showNotification){
+            await registration.showNotification(title, payload);
+            return true;
+          }
+        }
+      }catch(e){
+        console.error(e);
+      }
+      try{
+        const n = new Notification(title, payload);
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+        return true;
+      }catch(e){
+        console.error(e);
+        return false;
+      }
+    }
+
+    async function sendTestReminderNotification(){
+      const permission = await requestReminderNotificationPermission();
+      if(permission !== 'granted') return;
+      await showReminderBrowserNotification(
+        'Test thông báo nhắc việc',
+        'Nếu bạn thấy thông báo này, phần nhắc việc đã hoạt động.',
+        { tag:'salary-reminder-test', data:{ test:true } }
+      );
+    }
+
+    async function checkReminderNotifications(forceAllDue = false){
+      const permission = getNotificationPermissionState();
+      const cleaned = cleanupReminderNotificationStore();
+      if(cleaned) saveState();
+      if(permission !== 'granted') return;
+
+      const now = new Date();
+      const store = getReminderNotificationStore();
+      const dueItems = getDuePendingReminders(now).filter(item => forceAllDue || !store.fired[getReminderNotificationKey(item)]);
+      if(!dueItems.length) return;
+
+      const sentAt = new Date().toISOString();
+      let sent = false;
+
+      if(dueItems.length === 1){
+        const item = dueItems[0];
+        const whenText = [item.date || '', item.time || REMINDER_NOTIFY_DEFAULT_TIME].filter(Boolean).join(' • ');
+        sent = await showReminderBrowserNotification(
+          `Đến giờ: ${item.title || 'Việc cần nhắc'}`,
+          [whenText, item.note || 'Mở app để xem chi tiết.'].filter(Boolean).join(' — '),
+          { tag:`reminder-${item.id}`, data:{ reminderId:item.id } }
+        );
+        if(sent) store.fired[getReminderNotificationKey(item)] = sentAt;
+      } else {
+        const preview = dueItems.slice(0,3).map(item => item.title || 'Việc cần nhắc').join(' • ');
+        sent = await showReminderBrowserNotification(
+          `Bạn có ${dueItems.length} việc cần xử lý`,
+          preview || 'Mở app để xem danh sách việc cần nhắc.',
+          { tag:'reminder-batch', data:{ reminderIds: dueItems.map(item => item.id) } }
+        );
+        if(sent){
+          dueItems.forEach(item => {
+            store.fired[getReminderNotificationKey(item)] = sentAt;
+          });
+        }
+      }
+
+      if(sent) saveState();
+    }
+
+    function startReminderNotificationLoop(){
+      if(reminderCheckTimer) window.clearInterval(reminderCheckTimer);
+      reminderCheckTimer = window.setInterval(() => {
+        checkReminderNotifications().catch(console.error);
+      }, REMINDER_CHECK_INTERVAL_MS);
+    }
+
+    function renderReminderNotificationStatus(){
+      const statusBox = qs('#reminderNotifyStatus');
+      const enableBtn = qs('#enableReminderNotifyBtn');
+      const testBtn = qs('#testReminderNotifyBtn');
+      if(!statusBox || !enableBtn || !testBtn) return;
+
+      const info = getReminderNotificationInfo();
+      const dueCount = getDuePendingReminders().length;
+      statusBox.innerHTML = `
+        <div><strong>${info.title}</strong></div>
+        <div class="muted" style="margin-top:6px">${info.detail}</div>
+        <div class="muted" style="margin-top:6px;font-size:12px">Hiện đang có ${dueCount} việc đã tới giờ hoặc quá giờ nhưng chưa hoàn thành.</div>
+      `;
+
+      enableBtn.textContent = info.permission === 'granted' ? 'Đã bật thông báo' : 'Bật thông báo';
+      enableBtn.disabled = info.permission === 'granted' || info.permission === 'unsupported';
+      testBtn.disabled = info.permission !== 'granted';
     }
 
     function calcExpenseSummary(emp){
@@ -1123,6 +1355,7 @@
     function renderReminderTab(){
       const summary = calcReminderSummary();
       const items = clone(state.reminders || []).sort((a,b) => reminderSortValue(a).localeCompare(reminderSortValue(b)));
+      renderReminderNotificationStatus();
 
       qs('#reminderStats').innerHTML = `
         <div class="stat"><div class="k">Tổng việc</div><div class="v">${summary.total}</div></div>
@@ -1196,8 +1429,10 @@
 
       state.ui.reminderDraft = emptyReminderDraft();
       state.ui.reminderDraft.date = getSuggestedReminderDate();
+      clearReminderNotificationFlag(state.reminders[0].id);
       saveState();
       renderAll();
+      checkReminderNotifications(true).catch(console.error);
     }
 
     function toggleReminderDone(reminderId){
@@ -1205,8 +1440,10 @@
       if(!item) return;
       item.done = !item.done;
       item.updatedAt = new Date().toISOString();
+      if(!item.done) clearReminderNotificationFlag(item.id);
       saveState();
       renderAll();
+      checkReminderNotifications(true).catch(console.error);
     }
 
     function deleteReminder(reminderId){
@@ -1214,6 +1451,7 @@
       if(!item) return;
       if(!confirm(`Xóa việc "${item.title}"?`)) return;
       state.reminders = (state.reminders || []).filter(x => x.id !== reminderId);
+      clearReminderNotificationFlag(reminderId);
       saveState();
       renderAll();
     }
@@ -1232,7 +1470,9 @@
         return;
       }
       if(!confirm(`Xóa ${doneCount} việc đã hoàn thành?`)) return;
+      const removedIds = (state.reminders || []).filter(x => x.done).map(x => x.id);
       state.reminders = (state.reminders || []).filter(x => !x.done);
+      removedIds.forEach(clearReminderNotificationFlag);
       saveState();
       renderAll();
     }
@@ -1491,6 +1731,8 @@
     qs('#calcRemainingBtn').onclick = calculateRemaining;
     qs('#clearExpensesBtn').onclick = clearExpenses;
     qs('#addReminderBtn').onclick = addReminder;
+    qs('#enableReminderNotifyBtn').onclick = () => requestReminderNotificationPermission().catch(console.error);
+    qs('#testReminderNotifyBtn').onclick = () => sendTestReminderNotification().catch(console.error);
     qs('#fillTodayReminderBtn').onclick = fillTodayReminderDate;
     qs('#clearDoneRemindersBtn').onclick = clearDoneReminders;
     qs('#exportExcelBtn').onclick = exportExcel;
@@ -1516,7 +1758,19 @@
       });
     }
 
+    window.addEventListener('focus', () => {
+      checkReminderNotifications().catch(console.error);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if(!document.hidden) checkReminderNotifications().catch(console.error);
+    });
+
     renderAll();
+    startReminderNotificationLoop();
+    setTimeout(() => {
+      checkReminderNotifications(true).catch(console.error);
+    }, 1200);
   </script>
 </body>
 </html>
