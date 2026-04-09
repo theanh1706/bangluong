@@ -1,408 +1,745 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PRO MAX PWA Lương</title>
-<meta name="theme-color" content="#0f172a">
-<link rel="manifest" href="manifest.json">
-
-<style>
-body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
-.container{max-width:520px;margin:auto;padding:10px}
-.tabs{display:flex;gap:5px;margin-bottom:10px}
-.tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff;font-weight:bold}
-.active{background:#22c55e;color:#000}
-
-.card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px}
-input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%;text-align:center}
-input[type=number]{-moz-appearance:textfield}
-input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-
-.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155;cursor:pointer;position:relative}
-.header{background:#000;font-weight:bold}
-.work{background:#16a34a}
-.off{background:#7f1d1d}
-.half{background:#f59e0b;color:#000}
-.future{opacity:0.3}
-.today{outline:2px solid yellow}
-
-.btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:6px}
-.row{display:flex;gap:5px;justify-content:space-between}
-.stat{font-size:13px;color:#94a3b8}
-.big{font-size:22px;color:#22c55e;text-align:center;font-weight:bold}
-.warn{color:#f59e0b;text-align:center}
-
-.noteItem{display:flex;gap:5px;margin-bottom:5px}
-.remindItem{background:#334155;padding:8px;border-radius:10px;margin-bottom:5px}
-.overdue{background:#7f1d1d}
-.todayTask{background:#f59e0b;color:#000}
-
-@media(max-width:480px){
-  .grid{grid-template-columns:1fr 1fr}
-  .row{flex-direction:column}
-  .btn{font-size:14px}
-  .day{font-size:10px;padding:4px}
-}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Phần mềm tính lương</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <style>
+    :root{
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --line:#e2e8f0;
+      --primary:#0f172a;
+      --primary-2:#1e293b;
+      --green:#059669;
+      --red:#dc2626;
+      --yellow:#d97706;
+      --shadow:0 10px 25px rgba(15,23,42,.08);
+      --radius:18px;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);overflow-x:hidden}
+    button,input,select{font:inherit;max-width:100%}
+    .wrap{max-width:1200px;margin:0 auto;padding:14px}
+    .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#0f172a,#334155);color:#fff;display:grid;place-items:center;font-weight:700;box-shadow:var(--shadow)}
+    h1{font-size:20px;margin:0}
+    .sub{color:var(--muted);font-size:13px;margin-top:2px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{border:none;background:var(--primary);color:#fff;padding:10px 14px;border-radius:14px;cursor:pointer;box-shadow:var(--shadow)}
+    .btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none}
+    .btn.green{background:var(--green)}
+    .btn.red{background:var(--red)}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:minmax(0,330px) minmax(0,1fr);gap:14px}
+    .grid > *,.card,.card .body,.card .head,.field,.field-grid,.mini-grid,.predict-box,.stats,.toolbar,.month-nav,.actions,.calendar-wrap{min-width:0}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card .head{padding:16px 16px 8px;font-weight:700}
+    .card .body{padding:16px}
+    .employee-list{display:flex;flex-direction:column;gap:10px;max-height:260px;overflow:auto}
+    .employee-item{padding:12px;border:1px solid var(--line);border-radius:14px;cursor:pointer;background:#fff}
+    .employee-item.active{border-color:#0f172a;background:#f8fafc}
+    .employee-item .name{font-weight:700}
+    .employee-item .small{font-size:12px;color:var(--muted);margin-top:4px}
+    .field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:13px;color:#334155;font-weight:600}
+    .field input,.field select{width:100%;height:42px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:#fff;outline:none}
+    .field input:focus,.field select:focus{border-color:#94a3b8;box-shadow:0 0 0 3px rgba(148,163,184,.2)}
+    .money{ text-align:right; }
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .month-nav{display:flex;align-items:center;gap:8px}
+    .icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:#fff;cursor:pointer}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+    .stat{padding:14px;border-radius:16px;border:1px solid var(--line);background:#fff}
+    .stat .k{font-size:12px;color:var(--muted)}
+    .stat .v{margin-top:6px;font-weight:800;font-size:20px}
+    .calendar-wrap{overflow-x:auto;padding-bottom:4px}
+    .calendar{display:grid;grid-template-columns:repeat(7,minmax(74px,1fr));gap:8px;min-width:560px}
+    .wk{font-size:12px;color:var(--muted);text-align:center;padding:6px 0}
+    .day{border:1px solid var(--line);background:#fff;border-radius:16px;min-height:106px;padding:8px;display:flex;flex-direction:column;justify-content:space-between;position:relative}
+    .day.off{background:#fff7ed;border-color:#fed7aa}
+    .day.future{opacity:.55}
+    .day.partial{background:#eff6ff;border-color:#93c5fd}
+    .day.full{background:#ecfdf5;border-color:#86efac}
+    .day .num{font-weight:800}
+    .day .tag{font-size:11px;color:var(--muted)}
+    .check{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .tick{min-width:28px;height:24px;padding:0 8px;border-radius:999px;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;font-weight:700;background:#fff}
+    .day.partial .tick{background:#2563eb;color:#fff;border-color:#2563eb}
+    .day.full .tick{background:#10b981;color:#fff;border-color:#10b981}
+    .day-status{font-size:11px;font-weight:700}
+    .day.partial .day-status{color:#2563eb}
+    .day.full .day-status{color:#059669}
+    .predict-box,.calc-box{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+    .mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .line{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line)}
+    .line:last-child{border-bottom:none}
+    .line small{color:var(--muted);display:block;margin-top:2px}
+    .plus{color:var(--green);font-weight:700}
+    .minus{color:var(--red);font-weight:700}
+    .total{margin-top:12px;padding:14px;border-radius:16px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .muted{color:var(--muted)}
+    .install-note{font-size:12px;color:var(--muted);margin-top:6px}
+    .footer-note{margin-top:10px;font-size:12px;color:var(--muted)}
+    @media (max-width: 980px){
+      .grid{grid-template-columns:1fr}
+      .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .predict-box,.calc-box,.field-grid,.mini-grid{grid-template-columns:1fr}
+    }
+    @media (max-width: 768px){
+      .wrap{padding:10px}
+      .topbar{align-items:flex-start}
+      .topbar,.toolbar{gap:10px}
+      .actions{width:100%}
+      .topbar .actions,.toolbar .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      .actions .btn,.toolbar .actions .btn,.field .btn{width:100%;padding-left:10px;padding-right:10px}
+      .month-nav{width:100%;justify-content:space-between}
+      .card .body{padding:12px}
+      .card .head{padding:14px 14px 6px}
+      .stats{grid-template-columns:1fr}
+      .field-grid,.mini-grid,.predict-box,.calc-box{grid-template-columns:1fr !important}
+      .calendar{gap:6px;min-width:520px}
+      .day{min-height:86px;padding:6px;border-radius:14px}
+      .day .tag{font-size:10px}
+      .tick{min-width:24px;height:22px;padding:0 6px;font-size:11px}
+      h1{font-size:18px}
+    }
+    @media (max-width: 480px){
+      .topbar .actions,.toolbar .actions{grid-template-columns:1fr}
+      .employee-list{max-height:none}
+      .logo{width:38px;height:38px;border-radius:12px}
+      .sub{font-size:12px}
+      .line{align-items:flex-start;flex-direction:column}
+      .total{align-items:flex-start;flex-direction:column}
+    }
+    @media print{
+      .topbar,.sidebar-only,.toolbar .actions,.install-note{display:none!important}
+      body{background:#fff}
+      .card{box-shadow:none}
+      .grid{grid-template-columns:1fr}
+    }
+  </style>
 </head>
-
 <body>
-<div class="container">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">₫</div>
+        <div>
+          <h1>Phần mềm tính lương</h1>
+          <div class="sub">HTML thuần • LocalStorage • PWA • GitHub Pages</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" id="installBtn" style="display:none">Cài lên điện thoại</button>
+        <button class="btn secondary" id="exportExcelBtn">Xuất Excel</button>
+        <button class="btn secondary" id="exportPdfBtn">Xuất PDF</button>
+      </div>
+    </div>
 
-<div class="tabs">
-<button class="tabBtn active" onclick="switchTab(1)">💰 Tính lương</button>
-<button class="tabBtn" onclick="switchTab(2)">📊 Tài chính</button>
-<button class="tabBtn" onclick="switchTab(3)">📅 Lịch nhắc</button>
-</div>
+    <div class="grid">
+      <div class="sidebar-only">
+        <div class="card">
+          <div class="head">Nhân viên</div>
+          <div class="body">
+            <div class="actions" style="margin-bottom:12px">
+              <button class="btn" id="addEmployeeBtn">+ Thêm nhân viên</button>
+              <button class="btn red" id="deleteEmployeeBtn">Xóa</button>
+            </div>
+            <div class="employee-list" id="employeeList"></div>
+          </div>
+        </div>
 
-<!-- TAB 1 -->
-<div id="tab1">
-<h2 id="title">📊 Bảng lương</h2>
+        <div class="card" style="margin-top:14px">
+          <div class="head">Thông tin tính lương</div>
+          <div class="body">
+            <div class="field-grid">
+              <div class="field" style="grid-column:1 / -1">
+                <label>Tên nhân viên</label>
+                <input id="nameInput" placeholder="Nhập tên nhân viên" />
+              </div>
+              <div class="field">
+                <label>Lương cơ bản / tháng</label>
+                <input id="baseSalaryInput" class="money" inputmode="numeric" placeholder="0" />
+              </div>
+              <div class="field">
+                <label>Phụ cấp nội bộ tối đa</label>
+                <input id="allowanceInput" class="money" inputmode="numeric" readonly />
+              </div>
+              <div class="field">
+                <label>Ứng lương</label>
+                <input id="advanceInput" class="money" inputmode="numeric" placeholder="0" />
+              </div>
+              <div class="field">
+                <label>Thưởng thêm</label>
+                <input id="bonusInput" class="money" inputmode="numeric" placeholder="0" />
+              </div>
+            </div>
 
-<div class="card grid">
-<input id="name" placeholder="Tên">
-<input id="base" placeholder="Lương">
-<input id="advance" placeholder="Ứng lương">
-<input id="insurance" placeholder="Bảo hiểm">
-<input id="predictDays" type="number" placeholder="Nhập ngày dự đoán">
-</div>
+            <div class="field-grid" style="margin-top:12px">
+              <div class="field">
+                <label>Bảo hiểm</label>
+                <select id="insuranceModeInput">
+                  <option value="daily">Theo ngày</option>
+                  <option value="total">Tổng tháng</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Số tiền bảo hiểm</label>
+                <input id="insuranceValueInput" class="money" inputmode="numeric" placeholder="0" />
+              </div>
+              <div class="field">
+                <label>Thuế</label>
+                <select id="taxModeInput">
+                  <option value="total">Tổng tháng</option>
+                  <option value="daily">Theo ngày</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Số tiền thuế</label>
+                <input id="taxValueInput" class="money" inputmode="numeric" placeholder="0" />
+              </div>
+            </div>
 
-<div class="row">
-<button class="btn" onclick="calc()">🔄 CẬP NHẬT</button>
-<button class="btn" onclick="predictSalary()">🔮 Dự đoán</button>
-</div>
-<div class="row">
-<button class="btn" onclick="showOTMoney()">💰 Tổng OT</button>
-<button class="btn" onclick="resetAll()">🗑 RESET DATA</button>
-</div>
+            <div class="mini-grid" style="margin-top:12px">
+              <div class="field">
+                <label>OT (giờ) x1.5</label>
+                <input id="otHoursInput" inputmode="numeric" placeholder="0" />
+              </div>
+              <div class="field">
+                <label>Dự đoán số ngày làm</label>
+                <input id="projectedDaysInput" inputmode="numeric" placeholder="0" />
+              </div>
+              <div class="field">
+                <label>Lưu dữ liệu</label>
+                <button class="btn green" id="saveBtn" style="height:42px">Lưu ngay</button>
+              </div>
+            </div>
+            <div class="footer-note">Ô số tiền tự format dạng 1.000.000. Phụ cấp nội bộ cố định tối đa 1.000.000 và chia theo tỷ lệ ngày công trên mốc 26 công. Đạt 26 công được thưởng tự động 200.000. Dữ liệu tự lưu, tải lại trang không mất.</div>
+          </div>
+        </div>
+      </div>
 
-<div class="card warn" id="notify"></div>
+      <div>
+        <div class="stats" id="stats"></div>
 
-<div class="card">
-<div class="row">
-<button class="btn" onclick="prevMonth()">⬅️</button>
-<button class="btn" onclick="nextMonth()">➡️</button>
-</div>
+        <div class="card">
+          <div class="body">
+            <div class="toolbar">
+              <div class="month-nav">
+                <button class="icon-btn" id="prevMonthBtn">←</button>
+                <strong id="monthLabel">Tháng</strong>
+                <button class="icon-btn" id="nextMonthBtn">→</button>
+              </div>
+              <div class="actions">
+                <button class="btn secondary" id="markTodayBtn">Check hôm nay</button>
+                <button class="btn secondary" id="clearMonthBtn">Xóa chấm công tháng</button>
+              </div>
+            </div>
 
-<div id="monthTitle" class="big"></div>
-<div id="calendar" class="calendar"></div>
-</div>
+            <div class="muted" style="font-size:12px;margin-bottom:8px">Chạm vào ngày để đổi trạng thái: nghỉ → nửa ngày → đủ ngày. Màn hình nhỏ có thể vuốt ngang lịch.</div>
+            <div class="calendar-wrap">
+              <div class="calendar" id="calendarHeader"></div>
+              <div class="calendar" id="calendarGrid"></div>
+            </div>
+          </div>
+        </div>
 
-<div class="card stat" id="stats"></div>
-<div class="card big" id="result"></div>
-</div>
+        <div class="predict-box">
+          <div class="card">
+            <div class="head">Dự đoán lương theo số ngày nhập</div>
+            <div class="body" id="predictCalc"></div>
+          </div>
+          <div class="card">
+            <div class="head">Lương thực tế theo ngày đã check</div>
+            <div class="body" id="actualCalc"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<!-- TAB 2 -->
-<div id="tab2" style="display:none">
-<h2>📊 Tài chính</h2>
-<div class="card">
-<div id="financeMonth"></div>
-<div class="row">
-<button class="btn" onclick="prevFinanceMonth()">⬅️</button>
-<button class="btn" onclick="nextFinanceMonth()">➡️</button>
-</div>
-<div class="big" id="totalSpend"></div>
-<div id="noteList"></div>
-<button class="btn" onclick="addNote()">➕ Thêm</button>
-<button class="btn" onclick="clearNote()">🗑 Xóa</button>
-<input id="predictWorkDays" type="number" placeholder="Nhập ngày công">
-<button class="btn" onclick="predictFinance()">🔮 Dự đoán</button>
-<div class="big" id="remainMoney"></div>
-</div>
-</div>
+  <script>
+    const STORAGE_KEY = 'salary-pwa-html-v4';
+    const FULL_WORK_DAYS_TARGET = 26;
+    const INTERNAL_ALLOWANCE_FULL = 1000000;
+    const PERFECT_ATTENDANCE_BONUS = 200000;
+    const VND = new Intl.NumberFormat('vi-VN');
+    const qs = (s) => document.querySelector(s);
+    const qsa = (s) => [...document.querySelectorAll(s)];
+    const today = () => new Date();
+    const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const num = (v) => Number(String(v || '').replace(/\D/g,'')) || 0;
+    const onlyDigits = (v) => String(v || '').replace(/\D/g,'');
+    const cleanDecimalInput = (v) => {
+      const s = String(v || '').replace(/,/g,'.').replace(/[^\d.]/g,'');
+      const firstDot = s.indexOf('.');
+      if(firstDot === -1) return s;
+      return s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g,'');
+    };
+    const parseHalfDayValue = (v, maxValue = Infinity) => {
+      const n = Number(cleanDecimalInput(v));
+      if(!isFinite(n) || n < 0) return 0;
+      return Math.min(Math.round(n * 2) / 2, maxValue);
+    };
+    const fmtHalf = (v) => Number(v || 0) % 1 === 0 ? String(Number(v || 0)) : String(Number(v || 0)).replace('.5', ',5');
+    const fmt = (v) => VND.format(Math.round(Number(v || 0)));
+    const money = (v) => `${fmt(v)} ₫`;
+    const clone = (x) => JSON.parse(JSON.stringify(x));
 
-<!-- TAB 3 -->
-<div id="tab3" style="display:none">
-<h2>📅 Lịch nhắc</h2>
-<input id="taskText" placeholder="Nhập việc cần làm">
-<input id="taskDate" type="date">
-<button class="btn" onclick="addTask()">➕</button>
-<div id="taskList"></div>
-</div>
+    let state = loadState();
+    let deferredPrompt = null;
 
-</div>
+    function defaultMonthData(date){
+      return { attendanceMap: autoAttendanceForCurrentMonth(date), otHours:'0', bonus:'0', projectedDays:'' };
+    }
 
-<script>
-/* TAB */
-function switchTab(n){
- tab1.style.display=n===1?'block':'none';
- tab2.style.display=n===2?'block':'none';
- tab3.style.display=n===3?'block':'none';
- document.querySelectorAll('.tabBtn').forEach(btn=> btn.classList.remove('active'));
- document.querySelectorAll('.tabBtn')[n-1].classList.add('active');
-}
+    function createEmployee(name='Nhân viên mới'){
+      return {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        name,
+        baseSalary:'12000000',
+        advance:'0',
+        insuranceMode:'daily',
+        insuranceValue:'0',
+        taxMode:'total',
+        taxValue:'0',
+        monthlyData:{}
+      };
+    }
 
-/* ===== TAB 1 ===== */
-let now=new Date(),year=now.getFullYear(),month=now.getMonth();
+    function loadState(){
+      try{
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        if(raw && raw.employees && raw.employees.length){
+          raw.currentMonth = raw.currentMonth ? new Date(raw.currentMonth) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+          return raw;
+        }
+      }catch(e){}
+      const emp = createEmployee('Nguyễn Văn A');
+      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1) };
+    }
 
-function getNumber(val){return Number((val||'').toString().replace(/\./g,''))||0;}
-function money(n){return Number(Math.round(n||0)).toLocaleString("vi-VN");}
-function isSunday(d){return new Date(year,month,d).getDay()===0;}
-function monthKey(){return `tab1_${year}_${month+1}`;}
-function dayKey(d){return `${monthKey()}_ot_${d}`;}
-function statusKey(d){return `${monthKey()}_status_${d}`;}
+    function saveState(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        ...state,
+        currentMonth: state.currentMonth.toISOString()
+      }));
+    }
 
-// Lưu dữ liệu cá nhân + OT + trạng thái
-function saveData(){
-  const data = {
-    name: name.value,
-    base: base.value,
-    advance: advance.value,
-    insurance: insurance.value,
-    predictDays: predictDays.value
-  };
-  localStorage.setItem('tab1_user', JSON.stringify(data));
-}
+    function getActiveEmployee(){
+      let emp = state.employees.find(e => e.id === state.activeEmployeeId);
+      if(!emp){
+        emp = state.employees[0];
+        if(emp) state.activeEmployeeId = emp.id;
+      }
+      return emp;
+    }
 
-// LOAD dữ liệu cá nhân
-function loadData(){
-  const data = JSON.parse(localStorage.getItem('tab1_user')||'{}');
-  name.value = data.name||'';
-  base.value = data.base||'';
-  advance.value = data.advance||'';
-  insurance.value = data.insurance||'';
-  predictDays.value = data.predictDays||'';
-}
+    function getDaysInMonth(date){
+      return new Date(date.getFullYear(), date.getMonth()+1, 0).getDate();
+    }
 
-// CALC LƯƠNG
-function calc(){
- let baseVal=getNumber(base.value);
- let adv=getNumber(advance.value);
- let ins=getNumber(insurance.value);
- let days=new Date(year,month+1,0).getDate();
- let daySalary=baseVal/26;
- let hourSalary=daySalary/8;
+    function isSunday(date, day){
+      return new Date(date.getFullYear(), date.getMonth(), day).getDay() === 0;
+    }
 
- let work=0,ot=0;
- let nowDate=new Date();
+    function workingDaysInMonth(date){
+      let c = 0;
+      for(let d=1; d<=getDaysInMonth(date); d++) if(!isSunday(date,d)) c++;
+      return c;
+    }
 
- for(let i=1;i<=days;i++){
-  let d=new Date(year,month,i);
-  if(d>nowDate) continue;
-  if(isSunday(i)) continue;
+    function sameMonth(a,b){
+      return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth();
+    }
 
-  let s=localStorage.getItem(statusKey(i));
-  if(s==='half') work+=0.5;
-  else if(s!=='off') work++;
-  ot+=getNumber(localStorage.getItem(dayKey(i)));
- }
+    function isFutureDay(date, day){
+      const t = today();
+      const targetMonth = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+      const currentMonth = new Date(t.getFullYear(), t.getMonth(), 1).getTime();
+      if(targetMonth > currentMonth) return true;
+      if(!sameMonth(date,t)) return false;
+      return day > t.getDate();
+    }
 
- let allowPerDay=1000000/26;
- let allowMoney=work*allowPerDay;
- let bonus=work>=26?200000:0;
- let otMoney=ot*hourSalary*1.5;
+    function autoAttendanceForCurrentMonth(date){
+      const t = today();
+      if(!sameMonth(date,t)) return {};
+      const map = {};
+      for(let d=1; d<=t.getDate(); d++) if(!isSunday(date,d)) map[d] = 1;
+      return map;
+    }
 
- let total=Math.round(work*daySalary+allowMoney+otMoney+bonus-adv-ins);
+    function normalizeMonthData(monthData){
+      if(!monthData) return defaultMonthData(state.currentMonth);
+      if(Array.isArray(monthData.attendance)){
+        const map = {};
+        monthData.attendance.forEach(day => { map[day] = 1; });
+        delete monthData.attendance;
+        monthData.attendanceMap = map;
+      }
+      if(!monthData.attendanceMap || typeof monthData.attendanceMap !== 'object') monthData.attendanceMap = {};
+      if(monthData.projectedDays == null) monthData.projectedDays = '';
+      if(monthData.otHours == null) monthData.otHours = '0';
+      if(monthData.bonus == null) monthData.bonus = '0';
+      return monthData;
+    }
 
- stats.innerHTML=`Ngày làm: ${work} | OT: ${ot}h | 💰 ${money(otMoney)}đ`;
- result.innerText=money(total)+"đ";
-}
+    function ensureMonthData(emp){
+      const key = monthKey(state.currentMonth);
+      if(!emp.monthlyData[key]) emp.monthlyData[key] = defaultMonthData(state.currentMonth);
+      emp.monthlyData[key] = normalizeMonthData(emp.monthlyData[key]);
+      return emp.monthlyData[key];
+    }
 
-// DỰ ĐOÁN LƯƠNG
-function predictSalary(){
- let predictDay=Number(predictDays.value||0);
- if(predictDay<=0) return alert("Nhập số ngày dự đoán");
+    function setMoneyInputBehavior(id, getter, setter){
+      const el = qs(id);
+      el.value = getter() ? fmt(getter()) : '';
+      el.oninput = (e) => {
+        const digits = onlyDigits(e.target.value);
+        setter(digits);
+        e.target.value = digits ? fmt(digits) : '';
+        renderAll();
+      };
+    }
 
- let baseVal=getNumber(base.value);
- let adv=getNumber(advance.value);
- let ins=getNumber(insurance.value);
+    function bindInputs(){
+      const emp = getActiveEmployee();
+      if(!emp) return;
+      const m = ensureMonthData(emp);
 
- let days=new Date(year,month+1,0).getDate();
- let daySalary=baseVal/26;
- let hourSalary=daySalary/8;
+      qs('#nameInput').value = emp.name || '';
+      qs('#nameInput').oninput = e => { emp.name = e.target.value; saveState(); renderAll(); };
 
- let work=0,ot=0;
- let nowDate=new Date();
- for(let i=1;i<=days;i++){
-  let d=new Date(year,month,i);
-  if(d>nowDate || isSunday(i)) continue;
-  let s=localStorage.getItem(statusKey(i));
-  if(s==='half') work+=0.5;
-  else if(s!=='off') work++;
-  ot+=getNumber(localStorage.getItem(dayKey(i)));
- }
+      setMoneyInputBehavior('#baseSalaryInput', () => emp.baseSalary, v => { emp.baseSalary = v; saveState(); });
+      qs('#allowanceInput').value = fmt(INTERNAL_ALLOWANCE_FULL);
+      qs('#allowanceInput').readOnly = true;
+      setMoneyInputBehavior('#advanceInput', () => emp.advance, v => { emp.advance = v; saveState(); });
+      setMoneyInputBehavior('#bonusInput', () => m.bonus, v => { m.bonus = v; saveState(); });
+      setMoneyInputBehavior('#insuranceValueInput', () => emp.insuranceValue, v => { emp.insuranceValue = v; saveState(); });
+      setMoneyInputBehavior('#taxValueInput', () => emp.taxValue, v => { emp.taxValue = v; saveState(); });
 
- let allowPerDay=1000000/26;
- let otMoney=ot*hourSalary*1.5;
- let bonus=work>=26?200000:0;
- let predictTotal=Math.round(predictDay*daySalary + predictDay*allowPerDay + otMoney + (predictDay>=26?200000:0) - adv - ins);
+      qs('#insuranceModeInput').value = emp.insuranceMode;
+      qs('#insuranceModeInput').onchange = e => { emp.insuranceMode = e.target.value; saveState(); renderAll(); };
+      qs('#taxModeInput').value = emp.taxMode;
+      qs('#taxModeInput').onchange = e => { emp.taxMode = e.target.value; saveState(); renderAll(); };
 
- result.innerHTML=`
- Lương cơ bản: ${money(baseVal)}đ<br>
- Bảo hiểm: ${money(ins)}đ<br>
- Ứng lương: ${money(adv)}đ<br>
- Ngày công dự đoán: ${predictDay}<br>
- Ngày công thực tế: ${work}<br>
- OT: ${ot}h (${money(otMoney)}đ)<br>
- Tiền trợ cấp dự đoán: ${money(predictDay*allowPerDay)}đ<br>
- Thưởng 26 ngày: ${predictDay>=26?money(200000):0}đ<br>
- <hr>
- 🔮 Tổng dự đoán: ${money(predictTotal)}đ
- `;
-}
+      qs('#otHoursInput').value = m.otHours || '';
+      qs('#otHoursInput').oninput = e => { m.otHours = onlyDigits(e.target.value); e.target.value = m.otHours; saveState(); renderAll(); };
 
-function showOTMoney(){
- let days=new Date(year,month+1,0).getDate();
- let baseVal=getNumber(base.value);
- let hourSalary=(baseVal/26)/8;
- let ot=0;
- for(let i=1;i<=days;i++) ot+=getNumber(localStorage.getItem(dayKey(i)));
- alert("💰 OT: "+money(ot*hourSalary*1.5)+"đ");
-}
+      qs('#projectedDaysInput').value = m.projectedDays || '';
+      qs('#projectedDaysInput').oninput = e => {
+        const parsed = parseHalfDayValue(e.target.value, workingDaysInMonth(state.currentMonth));
+        m.projectedDays = parsed ? String(parsed) : '';
+        e.target.value = m.projectedDays;
+        saveState(); renderAll();
+      };
+    }
 
-// RESET ALL
-function resetAll(){
- if(confirm("Xóa toàn bộ dữ liệu?")){
-  localStorage.clear();
-  location.reload();
- }
-}
+    function calc(emp){
+      const month = state.currentMonth;
+      const m = ensureMonthData(emp);
+      const plannedDays = workingDaysInMonth(month);
+      const dailySalary = plannedDays ? num(emp.baseSalary) / plannedDays : 0;
+      const attendanceMap = m.attendanceMap || {};
+      const actualDays = Object.values(attendanceMap).reduce((sum, value) => sum + Number(value || 0), 0);
+      const projectedDays = parseHalfDayValue(m.projectedDays || 0, plannedDays) || 0;
+      const otHours = Number(m.otHours || 0);
+      const otPerHour = dailySalary / 8 * 1.5;
+      const otAmount = otPerHour * otHours;
+      const manualBonus = num(m.bonus);
+      const insurance = emp.insuranceMode === 'daily' ? num(emp.insuranceValue) * actualDays : num(emp.insuranceValue);
+      const tax = emp.taxMode === 'daily' ? num(emp.taxValue) * actualDays : num(emp.taxValue);
+      const advance = num(emp.advance);
+      const actualBase = dailySalary * actualDays;
+      const actualAllowance = INTERNAL_ALLOWANCE_FULL * Math.min(actualDays, FULL_WORK_DAYS_TARGET) / FULL_WORK_DAYS_TARGET;
+      const actualAttendanceBonus = actualDays >= FULL_WORK_DAYS_TARGET ? PERFECT_ATTENDANCE_BONUS : 0;
+      const actualNet = actualBase + actualAllowance + manualBonus + actualAttendanceBonus + otAmount - insurance - tax - advance;
 
-/* CALENDAR */
-function render(){
- calendar.innerHTML='';
- let days=new Date(year,month+1,0).getDate();
- monthTitle.innerText=`Tháng ${month+1}/${year}`;
+      const pInsurance = emp.insuranceMode === 'daily' ? num(emp.insuranceValue) * projectedDays : num(emp.insuranceValue);
+      const pTax = emp.taxMode === 'daily' ? num(emp.taxValue) * projectedDays : num(emp.taxValue);
+      const projectedBase = dailySalary * projectedDays;
+      const projectedAllowance = INTERNAL_ALLOWANCE_FULL * Math.min(projectedDays, FULL_WORK_DAYS_TARGET) / FULL_WORK_DAYS_TARGET;
+      const projectedAttendanceBonus = projectedDays >= FULL_WORK_DAYS_TARGET ? PERFECT_ATTENDANCE_BONUS : 0;
+      const projectedNet = projectedBase + projectedAllowance + manualBonus + projectedAttendanceBonus + otAmount - pInsurance - pTax - advance;
 
- ['CN','T2','T3','T4','T5','T6','T7'].forEach(d=>{
-  let h=document.createElement('div');
-  h.innerText=d;
-  h.className='day header';
-  calendar.appendChild(h);
- });
+      return {
+        plannedDays,
+        dailySalary,
+        actualDays,
+        projectedDays,
+        otHours,
+        otPerHour,
+        otAmount,
+        manualBonus,
+        insurance,
+        tax,
+        advance,
+        actualBase,
+        actualAllowance,
+        actualAttendanceBonus,
+        actualNet,
+        projectedBase,
+        projectedAllowance,
+        projectedAttendanceBonus,
+        projectedNet,
+        pInsurance,
+        pTax
+      };
+    }
 
- let first=new Date(year,month,1).getDay();
- for(let i=0;i<first;i++) calendar.appendChild(document.createElement('div'));
+    function renderEmployeeList(){
+      const root = qs('#employeeList');
+      root.innerHTML = '';
+      state.employees.forEach(emp => {
+        const c = calc(emp);
+        const item = document.createElement('div');
+        item.className = 'employee-item' + (emp.id === state.activeEmployeeId ? ' active' : '');
+        item.innerHTML = `<div class="name">${escapeHtml(emp.name || 'Chưa đặt tên')}</div><div class="small">Thực nhận hiện tại: ${money(c.actualNet)}</div>`;
+        item.onclick = () => { state.activeEmployeeId = emp.id; saveState(); renderAll(); };
+        root.appendChild(item);
+      });
+    }
 
- let nowDate=new Date();
- for(let i=1;i<=days;i++){
-  let div=document.createElement('div');
-  div.className='day';
+    function renderStats(){
+      const emp = getActiveEmployee();
+      if(!emp) return;
+      const c = calc(emp);
+      qs('#stats').innerHTML = `
+        <div class="stat"><div class="k">Ngày công dự kiến</div><div class="v">${c.plannedDays}</div></div>
+        <div class="stat"><div class="k">Lương / ngày</div><div class="v">${money(c.dailySalary)}</div></div>
+        <div class="stat"><div class="k">Ngày đã check</div><div class="v">${fmtHalf(c.actualDays)}</div></div>
+        <div class="stat"><div class="k">OT quy đổi</div><div class="v">${money(c.otAmount)}</div></div>
+      `;
+    }
 
-  let d=new Date(year,month,i);
-  let status=localStorage.getItem(statusKey(i));
-  let otVal=localStorage.getItem(dayKey(i))||'';
+    function renderCalendar(){
+      const month = state.currentMonth;
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      const totalDays = getDaysInMonth(month);
+      const h = qs('#calendarHeader');
+      const g = qs('#calendarGrid');
+      qs('#monthLabel').textContent = `Tháng ${month.getMonth()+1}/${month.getFullYear()}`;
+      h.innerHTML = ['CN','T2','T3','T4','T5','T6','T7'].map(x => `<div class="wk">${x}</div>`).join('');
+      g.innerHTML = '';
 
-  div.innerHTML=`${i}<br><input type="number" value="${otVal}" min="0" step="0.5">`;
+      const first = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+      for(let i=0;i<first;i++){
+        const blank = document.createElement('div');
+        g.appendChild(blank);
+      }
 
-  if(d>nowDate) div.classList.add('future');
-  else if(status==='off') div.classList.add('off');
-  else if(status==='half') div.classList.add('half');
-  else if(!isSunday(i)) div.classList.add('work');
+      for(let day=1; day<=totalDays; day++){
+        const off = isSunday(month, day);
+        const future = isFutureDay(month, day);
+        const attendanceValue = Number((m.attendanceMap || {})[day] || 0);
+        const stateClass = attendanceValue >= 1 ? ' full' : (attendanceValue === 0.5 ? ' partial' : '');
+        const tickText = attendanceValue >= 1 ? '1' : (attendanceValue === 0.5 ? '1/2' : '');
+        const statusText = off ? 'Chủ nhật nghỉ' : (future ? 'Chưa tới ngày' : (attendanceValue >= 1 ? 'Đủ ngày' : (attendanceValue === 0.5 ? 'Nửa ngày' : 'Nghỉ')));
+        const box = document.createElement('div');
+        box.className = 'day' + (off ? ' off' : '') + (future ? ' future' : '') + stateClass;
+        box.innerHTML = `
+          <div class="check">
+            <div>
+              <div class="num">${day}</div>
+              <div class="tag">${['CN','T2','T3','T4','T5','T6','T7'][new Date(month.getFullYear(), month.getMonth(), day).getDay()]}</div>
+            </div>
+            <div class="tick">${tickText}</div>
+          </div>
+          <div class="day-status">${statusText}</div>
+          <div class="tag">${attendanceValue ? fmtHalf(attendanceValue) + ' công' : '0 công'}</div>
+        `;
+        if(!off && !future){
+          box.style.cursor = 'pointer';
+          box.onclick = () => {
+            const map = m.attendanceMap || {};
+            const current = Number(map[day] || 0);
+            const next = current === 0 ? 0.5 : (current === 0.5 ? 1 : 0);
+            if(next === 0) delete map[day]; else map[day] = next;
+            m.attendanceMap = map;
+            saveState(); renderAll();
+          };
+        }
+        g.appendChild(box);
+      }
+    }
 
-  if(d.toDateString()===nowDate.toDateString()) div.classList.add('today');
+    function renderCalcBox(targetId, c, mode='actual'){
+      const insurance = mode === 'actual' ? c.insurance : c.pInsurance;
+      const tax = mode === 'actual' ? c.tax : c.pTax;
+      const base = mode === 'actual' ? c.actualBase : c.projectedBase;
+      const days = mode === 'actual' ? c.actualDays : c.projectedDays;
+      const allowance = mode === 'actual' ? c.actualAllowance : c.projectedAllowance;
+      const attendanceBonus = mode === 'actual' ? c.actualAttendanceBonus : c.projectedAttendanceBonus;
+      const total = mode === 'actual' ? c.actualNet : c.projectedNet;
+      const titleDays = mode === 'actual' ? 'Số ngày đã check' : 'Số ngày nhập dự đoán';
+      qs(targetId).innerHTML = `
+        <div class="line"><div>${titleDays}<small>${fmtHalf(days)} ngày</small></div><div>${fmtHalf(days)}</div></div>
+        <div class="line"><div>Lương ngày<small>Lương cơ bản / ${c.plannedDays} ngày công dự kiến</small></div><div>${money(c.dailySalary)}</div></div>
+        <div class="line"><div class="plus">+ Lương theo ngày công<small>${fmt(c.dailySalary)} × ${fmtHalf(days)}</small></div><div class="plus">${money(base)}</div></div>
+        <div class="line"><div class="plus">+ Phụ cấp nội bộ<small>1.000.000 × ${fmtHalf(Math.min(days, FULL_WORK_DAYS_TARGET))} / ${FULL_WORK_DAYS_TARGET}</small></div><div class="plus">${money(allowance)}</div></div>
+        <div class="line"><div class="plus">+ Thưởng đạt 26 công<small>${days >= FULL_WORK_DAYS_TARGET ? 'Đạt mốc 26 công' : 'Chưa đạt mốc 26 công'}</small></div><div class="plus">${money(attendanceBonus)}</div></div>
+        <div class="line"><div class="plus">+ Thưởng thêm</div><div class="plus">${money(c.manualBonus)}</div></div>
+        <div class="line"><div class="plus">+ OT x1.5<small>${fmt(c.dailySalary/8)} × 1.5 × ${c.otHours} giờ</small></div><div class="plus">${money(c.otAmount)}</div></div>
+        <div class="line"><div class="minus">- Bảo hiểm<small>${getActiveEmployee().insuranceMode === 'daily' ? fmt(num(getActiveEmployee().insuranceValue)) + ' × ' + fmtHalf(days) : 'Tổng tháng / theo cấu hình'}</small></div><div class="minus">${money(insurance)}</div></div>
+        <div class="line"><div class="minus">- Thuế<small>${getActiveEmployee().taxMode === 'daily' ? fmt(num(getActiveEmployee().taxValue)) + ' × ' + fmtHalf(days) : 'Tổng tháng / theo cấu hình'}</small></div><div class="minus">${money(tax)}</div></div>
+        <div class="line"><div class="minus">- Ứng lương</div><div class="minus">${money(c.advance)}</div></div>
+        <div class="total"><div><div style="font-size:13px;opacity:.85">Tổng lương thực nhận</div><div style="font-size:12px;opacity:.65">Hiển thị đầy đủ cộng trừ trước khi ra kết quả</div></div><div style="font-size:22px;font-weight:800">${money(total)}</div></div>
+      `;
+    }
 
-  let input=div.querySelector('input');
-  input.oninput=e=>{
-    if(d>nowDate || isSunday(i)) return;
-    localStorage.setItem(dayKey(i), e.target.value);
-    calc();
-  };
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+    }
 
-  div.onclick=e=>{
-    if(e.target===input || d>nowDate || isSunday(i)) return;
-    let cur=localStorage.getItem(statusKey(i));
-    if(!cur) localStorage.setItem(statusKey(i),'half');
-    else if(cur==='half') localStorage.setItem(statusKey(i),'off');
-    else localStorage.removeItem(statusKey(i));
-    render();
-    calc();
-  };
+    function renderAll(){
+      const emp = getActiveEmployee();
+      if(!emp) return;
+      ensureMonthData(emp);
+      renderEmployeeList();
+      bindInputs();
+      renderStats();
+      renderCalendar();
+      const c = calc(emp);
+      renderCalcBox('#predictCalc', c, 'projected');
+      renderCalcBox('#actualCalc', c, 'actual');
+      saveState();
+    }
 
-  calendar.appendChild(div);
- }
-}
+    function addEmployee(){
+      const emp = createEmployee(`Nhân viên ${state.employees.length + 1}`);
+      state.employees.unshift(emp);
+      state.activeEmployeeId = emp.id;
+      saveState();
+      renderAll();
+    }
 
-function prevMonth(){ month--; if(month<0){month=11;year--;} loadData(); render(); calc(); }
-function nextMonth(){ month++; if(month>11){month=0;year++;} loadData(); render(); calc(); }
+    function deleteEmployee(){
+      if(state.employees.length <= 1){
+        alert('Cần giữ ít nhất 1 nhân viên.');
+        return;
+      }
+      const emp = getActiveEmployee();
+      if(!confirm(`Xóa ${emp.name}?`)) return;
+      state.employees = state.employees.filter(e => e.id !== emp.id);
+      state.activeEmployeeId = state.employees[0].id;
+      saveState();
+      renderAll();
+    }
 
-loadData();
-render();
-calc();
-[name, base, advance, insurance, predictDays].forEach(i=>i.addEventListener('input', saveData));
+    function changeMonth(step){
+      state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth()+step, 1);
+      const emp = getActiveEmployee();
+      ensureMonthData(emp);
+      saveState();
+      renderAll();
+    }
 
-/* ===== TAB 2 & 3 ===== */
-let fMonth=new Date().getMonth(),fYear=new Date().getFullYear();
-function fKey(){return `finance_${fYear}_${fMonth}`;}
-function updateFinanceHeader(){ financeMonth.innerHTML=`📅 Tháng ${fMonth+1}/${fYear}`; }
+    function markToday(){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      const t = today();
+      if(!sameMonth(state.currentMonth, t)){
+        alert('Chỉ check nhanh hôm nay khi đang ở đúng tháng hiện tại.');
+        return;
+      }
+      const d = t.getDate();
+      if(isSunday(state.currentMonth, d)){
+        alert('Hôm nay là Chủ nhật nên không check công.');
+        return;
+      }
+      const map = m.attendanceMap || {};
+      map[d] = 1;
+      m.attendanceMap = map;
+      saveState();
+      renderAll();
+    }
 
-function addNote(t='',m=''){
- let div=document.createElement('div');
- div.className='noteItem';
- div.innerHTML=`
- <input placeholder="Nội dung (ăn uống...)" value="${t}">
- <input type="number" placeholder="Số tiền" value="${m}">
- <button onclick="this.parentElement.remove();saveNote()">❌</button>
- `;
- noteList.appendChild(div);
- div.querySelectorAll('input').forEach(i=> i.addEventListener('input',saveNote));
- saveNote();
-}
+    function clearMonth(){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      if(!confirm('Xóa toàn bộ chấm công tháng này?')) return;
+      m.attendanceMap = {};
+      saveState();
+      renderAll();
+    }
 
-function saveNote(){
- let arr=[]; document.querySelectorAll('.noteItem').forEach(n=> arr.push({t:n.children[0].value,m:n.children[1].value}));
- localStorage.setItem(fKey(),JSON.stringify(arr));
- calcFinance();
-}
+    function exportExcel(){
+      const emp = getActiveEmployee();
+      const c = calc(emp);
+      const html = `
+        <table border="1">
+          <tr><th colspan="2">Bảng lương ${escapeHtml(emp.name)}</th></tr>
+          <tr><td>Tháng</td><td>${state.currentMonth.getMonth()+1}/${state.currentMonth.getFullYear()}</td></tr>
+          <tr><td>Lương cơ bản</td><td>${num(emp.baseSalary)}</td></tr>
+          <tr><td>Ngày công dự kiến</td><td>${c.plannedDays}</td></tr>
+          <tr><td>Lương ngày</td><td>${Math.round(c.dailySalary)}</td></tr>
+          <tr><td>Ngày đã check</td><td>${fmtHalf(c.actualDays)}</td></tr>
+          <tr><td>Lương theo ngày công</td><td>${Math.round(c.actualBase)}</td></tr>
+          <tr><td>Phụ cấp nội bộ theo 26 công</td><td>${Math.round(c.actualAllowance)}</td></tr>
+          <tr><td>Thưởng đạt 26 công</td><td>${Math.round(c.actualAttendanceBonus)}</td></tr>
+          <tr><td>Thưởng thêm</td><td>${c.manualBonus}</td></tr>
+          <tr><td>OT</td><td>${Math.round(c.otAmount)}</td></tr>
+          <tr><td>Bảo hiểm</td><td>${Math.round(c.insurance)}</td></tr>
+          <tr><td>Thuế</td><td>${Math.round(c.tax)}</td></tr>
+          <tr><td>Ứng lương</td><td>${c.advance}</td></tr>
+          <tr><td>Thực nhận</td><td>${Math.round(c.actualNet)}</td></tr>
+        </table>`;
+      const blob = new Blob([html], {type:'application/vnd.ms-excel'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `bang-luong-${slug(emp.name)}-${monthKey(state.currentMonth)}.xls`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
 
-function loadNote(){
- noteList.innerHTML='';
- let data=JSON.parse(localStorage.getItem(fKey())||'[]');
- if(data.length===0){ data=[ {t:"Ăn uống",m:""}, {t:"Sinh hoạt",m:""}, {t:"Xăng xe",m:""} ]; }
- data.forEach(d=>addNote(d.t,d.m));
- updateFinanceHeader();
- calcFinance();
-}
+    function exportPdf(){
+      window.print();
+    }
 
-function calcFinance(){
- let total=0;
- document.querySelectorAll('.noteItem').forEach(n=> total+=Number(n.children[1].value||0));
- totalSpend.innerText="💸 "+money(total)+"đ";
-}
+    function slug(s){
+      return String(s || 'nhan-vien').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase();
+    }
 
-function predictFinance(){
- let days=Number(predictWorkDays.value||0); if(days<=0)return alert("Nhập ngày công");
- let baseVal=getNumber(base.value); let adv=getNumber(advance.value); let ins=getNumber(insurance.value);
- let salary=days*(baseVal/26)-adv-ins;
- let spend=0; document.querySelectorAll('.noteItem').forEach(n=> spend+=Number(n.children[1].value||0));
- let remain=salary-spend;
- remainMoney.innerHTML=` 💰 Lương: ${money(salary)}đ<br> 💸 Chi: ${money(spend)}đ<br> <hr> 💵 Còn: <span style="color:${remain<0?'red':'#22c55e'}">${money(remain)}đ</span> `;
-}
+    qs('#addEmployeeBtn').onclick = addEmployee;
+    qs('#deleteEmployeeBtn').onclick = deleteEmployee;
+    qs('#saveBtn').onclick = () => { saveState(); alert('Đã lưu dữ liệu.'); };
+    qs('#prevMonthBtn').onclick = () => changeMonth(-1);
+    qs('#nextMonthBtn').onclick = () => changeMonth(1);
+    qs('#markTodayBtn').onclick = markToday;
+    qs('#clearMonthBtn').onclick = clearMonth;
+    qs('#exportExcelBtn').onclick = exportExcel;
+    qs('#exportPdfBtn').onclick = exportPdf;
 
-function clearNote(){
- if(confirm("Xóa toàn bộ chi tiêu tháng này?")){
-  localStorage.removeItem(fKey());
-  loadNote();
- }
-}
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      qs('#installBtn').style.display = 'inline-block';
+    });
 
-function nextFinanceMonth(){ fMonth++; if(fMonth>11){fMonth=0;fYear++;} loadNote(); }
-function prevFinanceMonth(){ fMonth--; if(fMonth<0){fMonth=11;fYear--;} loadNote(); }
-loadNote();
+    qs('#installBtn').onclick = async () => {
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      qs('#installBtn').style.display = 'none';
+    };
 
-/* TAB 3 */
-function addTask(){
- let arr=JSON.parse(localStorage.getItem('task')||'[]');
- arr.push({t:taskText.value,d:taskDate.value});
- localStorage.setItem('task',JSON.stringify(arr));
- loadTask();
-}
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      });
+    }
 
-function loadTask(){
- taskList.innerHTML='';
- let arr=JSON.parse(localStorage.getItem('task')||'[]');
- arr.forEach(t=>{
-  let div=document.createElement('div');
-  div.className='remindItem';
-  div.innerText=t.t+" "+t.d;
-  taskList.appendChild(div);
- });
-}
-
-loadTask();
-</script>
+    renderAll();
+  </script>
 </body>
 </html>
