@@ -263,7 +263,7 @@
               </div>
               <div class="field">
                 <label>Dự đoán số ngày làm</label>
-                <input id="projectedDaysInput" inputmode="numeric" placeholder="0" />
+                <input id="projectedDaysInput" inputmode="decimal" placeholder="Ví dụ: 7,5" />
               </div>
               <div class="field">
                 <label>Lưu dữ liệu</label>
@@ -669,11 +669,18 @@
       qs('#otHoursInput').value = m.otHours || '';
       qs('#otHoursInput').oninput = e => { m.otHours = onlyDigits(e.target.value); e.target.value = m.otHours; saveState(); renderAll(); };
 
-      qs('#projectedDaysInput').value = m.projectedDays || '';
+      qs('#projectedDaysInput').value = m.projectedDays ? fmtHalf(m.projectedDays) : '';
       qs('#projectedDaysInput').oninput = e => {
-        const parsed = parseHalfDayValue(e.target.value, workingDaysInMonth(state.currentMonth));
-        m.projectedDays = parsed ? String(parsed) : '';
+        let raw = cleanDecimalInput(e.target.value);
+        if(raw.startsWith('.')) raw = '0' + raw;
+        m.projectedDays = raw.replace('.', ',');
         e.target.value = m.projectedDays;
+        saveState();
+      };
+      qs('#projectedDaysInput').onblur = e => {
+        const parsed = parseHalfDayValue(m.projectedDays || '', workingDaysInMonth(state.currentMonth));
+        m.projectedDays = parsed ? String(parsed) : '';
+        e.target.value = m.projectedDays ? fmtHalf(m.projectedDays) : '';
         saveState(); renderAll();
       };
     }
