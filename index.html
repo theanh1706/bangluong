@@ -3,29 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PRO MAX FINAL STABLE</title>
+<title>PRO MAX PWA Lương</title>
 <meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
 
 <style>
 body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
 .container{max-width:520px;margin:auto;padding:10px}
 .tabs{display:flex;gap:5px;margin-bottom:10px}
-.tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff}
+.tabBtn{flex:1;padding:10px;border:none;border-radius:10px;background:#334155;color:#fff;font-weight:bold}
 .active{background:#22c55e;color:#000}
 
 .card{background:#1e293b;padding:10px;border-radius:12px;margin-bottom:10px}
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px}
-input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;width:100%;text-align:center}
+input[type=number]{-moz-appearance:textfield}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
 .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155;cursor:pointer}
-.header{background:#000}
+.day{padding:6px;border-radius:10px;text-align:center;font-size:12px;background:#334155;cursor:pointer;position:relative}
+.header{background:#000;font-weight:bold}
 .work{background:#16a34a}
 .off{background:#7f1d1d}
-.half{background:#f59e0b}
+.half{background:#f59e0b;color:#000}
 .future{opacity:0.3}
 .today{outline:2px solid yellow}
+
 .btn{width:100%;padding:10px;border-radius:10px;background:#22c55e;color:#000;font-weight:bold;border:none;margin-top:6px}
-.row{display:flex;gap:5px}
+.row{display:flex;gap:5px;justify-content:space-between}
 .stat{font-size:13px;color:#94a3b8}
 .big{font-size:22px;color:#22c55e;text-align:center;font-weight:bold}
 .warn{color:#f59e0b;text-align:center}
@@ -34,6 +39,13 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 .remindItem{background:#334155;padding:8px;border-radius:10px;margin-bottom:5px}
 .overdue{background:#7f1d1d}
 .todayTask{background:#f59e0b;color:#000}
+
+@media(max-width:480px){
+  .grid{grid-template-columns:1fr 1fr}
+  .row{flex-direction:column}
+  .btn{font-size:14px}
+  .day{font-size:10px;padding:4px}
+}
 </style>
 </head>
 
@@ -48,7 +60,6 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 
 <!-- TAB 1 -->
 <div id="tab1">
-
 <h2 id="title">📊 Bảng lương</h2>
 
 <div class="card grid">
@@ -59,10 +70,14 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <input id="predictDays" type="number" placeholder="Nhập ngày dự đoán">
 </div>
 
+<div class="row">
 <button class="btn" onclick="calc()">🔄 CẬP NHẬT</button>
 <button class="btn" onclick="predictSalary()">🔮 Dự đoán</button>
+</div>
+<div class="row">
 <button class="btn" onclick="showOTMoney()">💰 Tổng OT</button>
 <button class="btn" onclick="resetAll()">🗑 RESET DATA</button>
+</div>
 
 <div class="card warn" id="notify"></div>
 
@@ -72,13 +87,12 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <button class="btn" onclick="nextMonth()">➡️</button>
 </div>
 
-<div id="monthTitle"></div>
+<div id="monthTitle" class="big"></div>
 <div id="calendar" class="calendar"></div>
 </div>
 
 <div class="card stat" id="stats"></div>
 <div class="card big" id="result"></div>
-
 </div>
 
 <!-- TAB 2 -->
@@ -103,7 +117,7 @@ input{padding:10px;border-radius:10px;border:none;background:#334155;color:#fff;
 <!-- TAB 3 -->
 <div id="tab3" style="display:none">
 <h2>📅 Lịch nhắc</h2>
-<input id="taskText">
+<input id="taskText" placeholder="Nhập việc cần làm">
 <input id="taskDate" type="date">
 <button class="btn" onclick="addTask()">➕</button>
 <div id="taskList"></div>
@@ -143,6 +157,7 @@ function saveData(){
   localStorage.setItem('tab1_user', JSON.stringify(data));
 }
 
+// LOAD dữ liệu cá nhân
 function loadData(){
   const data = JSON.parse(localStorage.getItem('tab1_user')||'{}');
   name.value = data.name||'';
@@ -238,6 +253,7 @@ function showOTMoney(){
  alert("💰 OT: "+money(ot*hourSalary*1.5)+"đ");
 }
 
+// RESET ALL
 function resetAll(){
  if(confirm("Xóa toàn bộ dữ liệu?")){
   localStorage.clear();
@@ -308,7 +324,7 @@ render();
 calc();
 [name, base, advance, insurance, predictDays].forEach(i=>i.addEventListener('input', saveData));
 
-/* ===== TAB 2 & 3 giữ nguyên ===== */
+/* ===== TAB 2 & 3 ===== */
 let fMonth=new Date().getMonth(),fYear=new Date().getFullYear();
 function fKey(){return `finance_${fYear}_${fMonth}`;}
 function updateFinanceHeader(){ financeMonth.innerHTML=`📅 Tháng ${fMonth+1}/${fYear}`; }
