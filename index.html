@@ -87,6 +87,18 @@
     .muted{color:var(--muted)}
     .install-note{font-size:12px;color:var(--muted);margin-top:6px}
     .footer-note{margin-top:10px;font-size:12px;color:var(--muted)}
+    .salary-sections{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+    .salary-accordion{border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);overflow:hidden}
+    .salary-tab-btn{width:100%;border:none;background:linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%);color:var(--ink);padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;text-align:left;font-weight:800}
+    .salary-tab-btn:hover{background:linear-gradient(180deg,#f1f5f9 0%,#e2e8f0 100%)}
+    .salary-tab-btn.active{background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%)}
+    .salary-tab-title{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .salary-tab-title small{font-weight:600;color:var(--muted);font-size:12px}
+    .salary-arrow{flex-shrink:0;font-size:14px;transition:transform .25s ease}
+    .salary-tab-btn.active .salary-arrow{transform:rotate(180deg)}
+    .salary-panel{display:none;border-top:1px solid var(--line);background:#fff}
+    .salary-panel.open{display:block}
+    .salary-panel .body{padding:16px}
     @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
       .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -104,6 +116,8 @@
       .card .head{padding:14px 14px 6px}
       .stats{grid-template-columns:1fr}
       .field-grid,.mini-grid,.predict-box,.calc-box{grid-template-columns:1fr !important}
+      .salary-tab-btn{padding:14px}
+      .salary-panel .body{padding:14px}
       .calendar{gap:6px;min-width:520px}
       .day{min-height:86px;padding:6px;border-radius:14px}
       .day .tag{font-size:10px}
@@ -251,14 +265,31 @@
           </div>
         </div>
 
-        <div class="predict-box">
-          <div class="card">
-            <div class="head">Dự đoán lương theo số ngày nhập</div>
-            <div class="body" id="predictCalc"></div>
+        <div class="salary-sections">
+          <div class="salary-accordion" id="salary-predict">
+            <button class="salary-tab-btn" type="button" data-target="predictPanel" aria-expanded="false">
+              <span class="salary-tab-title">
+                <span>Dự đoán lương theo số ngày nhập</span>
+                <small>Bấm để mở / thu gọn bảng tính</small>
+              </span>
+              <span class="salary-arrow">▼</span>
+            </button>
+            <div class="salary-panel" id="predictPanel">
+              <div class="body" id="predictCalc"></div>
+            </div>
           </div>
-          <div class="card">
-            <div class="head">Lương thực tế theo ngày đã check</div>
-            <div class="body" id="actualCalc"></div>
+
+          <div class="salary-accordion" id="salary-actual">
+            <button class="salary-tab-btn" type="button" data-target="actualPanel" aria-expanded="false">
+              <span class="salary-tab-title">
+                <span>Lương thực tế theo ngày đã check</span>
+                <small>Bấm để mở / thu gọn bảng tính</small>
+              </span>
+              <span class="salary-arrow">▼</span>
+            </button>
+            <div class="salary-panel" id="actualPanel">
+              <div class="body" id="actualCalc"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -600,6 +631,27 @@
       return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     }
 
+    function initSalaryTabs(){
+      qsa('.salary-tab-btn').forEach(btn => {
+        btn.onclick = () => {
+          const panel = qs('#' + btn.dataset.target);
+          const isOpen = panel.classList.contains('open');
+
+          qsa('.salary-tab-btn').forEach(otherBtn => {
+            otherBtn.classList.remove('active');
+            otherBtn.setAttribute('aria-expanded', 'false');
+          });
+          qsa('.salary-panel').forEach(otherPanel => otherPanel.classList.remove('open'));
+
+          if(!isOpen){
+            btn.classList.add('active');
+            btn.setAttribute('aria-expanded', 'true');
+            panel.classList.add('open');
+          }
+        };
+      });
+    }
+
     function renderAll(){
       const emp = getActiveEmployee();
       if(!emp) return;
@@ -611,6 +663,7 @@
       const c = calc(emp);
       renderCalcBox('#predictCalc', c, 'projected');
       renderCalcBox('#actualCalc', c, 'actual');
+      initSalaryTabs();
       saveState();
     }
 
@@ -740,6 +793,7 @@
     }
 
     renderAll();
+    initSalaryTabs();
   </script>
 </body>
 </html>
