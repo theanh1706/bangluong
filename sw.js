@@ -1,29 +1,21 @@
-const CACHE_NAME = 'salary-pwa-cache-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './sw.js'
-];
-
-self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
-  self.skipWaiting();
-});
+self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
-  );
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-      const cloned = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
-      return response;
-    }).catch(() => caches.match('./index.html')))
-  );
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const allClients = await self.clients.matchAll({ type:'window', includeUncontrolled:true });
+    for (const client of allClients) {
+      if ('focus' in client) {
+        await client.focus();
+        return;
+      }
+    }
+    if (self.clients.openWindow) {
+      await self.clients.openWindow('./');
+    }
+  })());
 });
