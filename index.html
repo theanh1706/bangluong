@@ -76,6 +76,21 @@
     .day-status{font-size:11px;font-weight:700}
     .day.partial .day-status{color:#2563eb}
     .day.full .day-status{color:#059669}
+    .day-ot-wrap{margin-top:6px}
+    .day-ot-label{font-size:10px;color:var(--muted);margin-bottom:4px}
+    .day-ot-input{
+      width:100%;
+      height:24px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:0 6px;
+      font-size:11px;
+      background:#fff;
+      outline:none;
+      text-align:center;
+    }
+    .day-ot-input:focus{border-color:#94a3b8;box-shadow:0 0 0 2px rgba(148,163,184,.16)}
+    .day.future .day-ot-input,.day.off .day-ot-input{background:#f8fafc}
     .predict-box,.calc-box{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
     .mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .line{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line)}
@@ -267,11 +282,11 @@
             <div class="mini-grid" style="margin-top:12px">
               <div class="field">
                 <label>OT (giờ) x1.5</label>
-                <input id="otHoursInput" inputmode="numeric" placeholder="0" />
+                <input id="otHoursInput" inputmode="decimal" placeholder="0 hoặc 7,5" readonly />
               </div>
               <div class="field">
                 <label>Dự đoán số ngày làm</label>
-                <input id="projectedDaysInput" inputmode="numeric" placeholder="0" />
+                <input id="projectedDaysInput" inputmode="decimal" placeholder="0 hoặc 26,5" />
               </div>
               <div class="field">
                 <label>Lưu dữ liệu</label>
@@ -537,13 +552,26 @@
     const emptyReminderDraft = () => ({ title:'', note:'', date:'', time:'' });
     const REMINDER_NOTIFY_DEFAULT_TIME = '09:00';
     const REMINDER_CHECK_INTERVAL_MS = 30000;
+    const AUTO_ATTENDANCE_SYNC_MS = 60000;
+
+    const FIXED_HOLIDAY_MM_DD = ['01-01','04-30','05-01','09-02'];
+    const CUSTOM_HOLIDAY_DATES = [];
 
     let state = loadState();
     let deferredPrompt = null;
     let reminderCheckTimer = null;
 
     function defaultMonthData(date){
-      return { attendanceMap: autoAttendanceForCurrentMonth(date), otHours:'0', bonus:'0', projectedDays:'', expenses:[], showRemainingResult:false };
+      return {
+        attendanceMap: autoAttendanceForCurrentMonth(date),
+        offDays:{},
+        dayOtMap:{},
+        otHours:'0',
+        bonus:'0',
+        projectedDays:'',
+        expenses:[],
+        showRemainingResult:false
+      };
     }
 
     function createEmployee(name='Nhân viên mới'){
@@ -604,9 +632,36 @@
       return new Date(date.getFullYear(), date.getMonth(), day).getDay() === 0;
     }
 
+    function isHoliday(date, day){
+      const mmdd = `${pad2(date.getMonth()+1)}-${pad2(day)}`;
+      const ymd = `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(day)}`;
+      return FIXED_HOLIDAY_MM_DD.includes(mmdd) || CUSTOM_HOLIDAY_DATES.includes(ymd);
+    }
+
+    function parseDecimalStepValue(v, maxValue = Infinity){
+      const n = Number(cleanDecimalInput(v));
+      if(!isFinite(n) || n < 0) return 0;
+      return Math.min(Math.round(n * 2) / 2, maxValue);
+    }
+
+    function getDayOtMap(monthData){
+      if(!monthData.dayOtMap || typeof monthData.dayOtMap !== 'object') monthData.dayOtMap = {};
+      return monthData.dayOtMap;
+    }
+
+    function getOffDays(monthData){
+      if(!monthData.offDays || typeof monthData.offDays !== 'object') monthData.offDays = {};
+      return monthData.offDays;
+    }
+
+    function sumDayOtHours(monthData){
+      const map = getDayOtMap(monthData);
+      return Object.values(map).reduce((sum, value) => sum + parseDecimalStepValue(value), 0);
+    }
+
     function workingDaysInMonth(date){
       let c = 0;
-      for(let d=1; d<=getDaysInMonth(date); d++) if(!isSunday(date,d)) c++;
+      for(let d=1; d<=getDaysInMonth(date); d++) if(!isSunday(date,d) && !isHoliday(date,d)) c++;
       return c;
     }
 
@@ -627,8 +682,58 @@
       const t = today();
       if(!sameMonth(date,t)) return {};
       const map = {};
-      for(let d=1; d<=t.getDate(); d++) if(!isSunday(date,d)) map[d] = 1;
+      for(let d=1; d<=t.getDate(); d++){
+        if(isSunday(date,d) || isHoliday(date,d)) continue;
+        map[d] = 1;
+      }
       return map;
+    }
+
+    function syncAutoAttendanceForMonth(emp){
+      const m = ensureMonthData(emp, false);
+      const month = state.currentMonth;
+      const t = today();
+
+      if(!sameMonth(month, t)) return false;
+
+      const attendanceMap = m.attendanceMap || {};
+      const offDays = getOffDays(m);
+      let changed = false;
+
+      for(let d=1; d<=t.getDate(); d++){
+        if(isSunday(month, d) || isHoliday(month, d)) continue;
+        if(offDays[d]) continue;
+        if(Number(attendanceMap[d] || 0) === 0){
+          attendanceMap[d] = 1;
+          changed = true;
+        }
+      }
+
+      m.attendanceMap = attendanceMap;
+      return changed;
+    }
+
+    function startAutoAttendanceLoop(){
+      window.setInterval(() => {
+        const emp = getActiveEmployee();
+        if(!emp) return;
+        const changed = syncAutoAttendanceForMonth(emp);
+        if(changed){
+          saveState();
+          renderAll();
+        }
+      }, AUTO_ATTENDANCE_SYNC_MS);
+
+      document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState !== 'visible') return;
+        const emp = getActiveEmployee();
+        if(!emp) return;
+        const changed = syncAutoAttendanceForMonth(emp);
+        if(changed){
+          saveState();
+          renderAll();
+        }
+      });
     }
 
     function normalizeMonthData(monthData){
@@ -640,6 +745,8 @@
         monthData.attendanceMap = map;
       }
       if(!monthData.attendanceMap || typeof monthData.attendanceMap !== 'object') monthData.attendanceMap = {};
+      if(!monthData.offDays || typeof monthData.offDays !== 'object') monthData.offDays = {};
+      if(!monthData.dayOtMap || typeof monthData.dayOtMap !== 'object') monthData.dayOtMap = {};
       if(monthData.projectedDays == null) monthData.projectedDays = '';
       if(monthData.otHours == null) monthData.otHours = '0';
       if(monthData.bonus == null) monthData.bonus = '0';
@@ -648,10 +755,11 @@
       return monthData;
     }
 
-    function ensureMonthData(emp){
+    function ensureMonthData(emp, withSync = true){
       const key = monthKey(state.currentMonth);
       if(!emp.monthlyData[key]) emp.monthlyData[key] = defaultMonthData(state.currentMonth);
       emp.monthlyData[key] = normalizeMonthData(emp.monthlyData[key]);
+      if(withSync) syncAutoAttendanceForMonth(emp);
       return emp.monthlyData[key];
     }
 
@@ -959,14 +1067,15 @@
       qs('#taxModeInput').value = emp.taxMode;
       qs('#taxModeInput').onchange = e => { emp.taxMode = e.target.value; saveState(); renderAll(); };
 
-      qs('#otHoursInput').value = m.otHours || '';
-      qs('#otHoursInput').oninput = e => { m.otHours = onlyDigits(e.target.value); e.target.value = m.otHours; saveState(); renderAll(); };
+      qs('#otHoursInput').value = fmtHalf(sumDayOtHours(m));
+      qs('#otHoursInput').readOnly = true;
+      qs('#otHoursInput').title = 'OT tổng được tự cộng từ các ô OT trong từng ngày của lịch';
 
-      qs('#projectedDaysInput').value = m.projectedDays || '';
+      qs('#projectedDaysInput').value = m.projectedDays ? fmtHalf(m.projectedDays) : '';
       qs('#projectedDaysInput').oninput = e => {
-        const parsed = parseHalfDayValue(e.target.value, workingDaysInMonth(state.currentMonth));
+        const parsed = parseDecimalStepValue(e.target.value, workingDaysInMonth(state.currentMonth));
         m.projectedDays = parsed ? String(parsed) : '';
-        e.target.value = m.projectedDays;
+        e.target.value = m.projectedDays ? fmtHalf(m.projectedDays) : '';
         saveState(); renderAll();
       };
     }
@@ -1041,7 +1150,8 @@
       const attendanceMap = m.attendanceMap || {};
       const actualDays = Object.values(attendanceMap).reduce((sum, value) => sum + Number(value || 0), 0);
       const projectedDays = parseHalfDayValue(m.projectedDays || 0, plannedDays) || 0;
-      const otHours = Number(m.otHours || 0);
+      const otHours = sumDayOtHours(m);
+      m.otHours = String(otHours || 0);
       const otPerHour = dailySalary / 8 * 1.5;
       const otAmount = otPerHour * otHours;
       const manualBonus = num(m.bonus);
@@ -1128,12 +1238,22 @@
       }
 
       for(let day=1; day<=totalDays; day++){
-        const off = isSunday(month, day);
+        const off = isSunday(month, day) || isHoliday(month, day);
         const future = isFutureDay(month, day);
+        const offDays = getOffDays(m);
+        const dayOtMap = getDayOtMap(m);
         const attendanceValue = Number((m.attendanceMap || {})[day] || 0);
-        const stateClass = attendanceValue >= 1 ? ' full' : (attendanceValue === 0.5 ? ' partial' : '');
         const tickText = attendanceValue >= 1 ? '1' : (attendanceValue === 0.5 ? '1/2' : '');
-        const statusText = off ? 'Chủ nhật nghỉ' : (future ? 'Chưa tới ngày' : (attendanceValue >= 1 ? 'Đủ ngày' : (attendanceValue === 0.5 ? 'Nửa ngày' : 'Nghỉ')));
+        const stateClass = attendanceValue >= 1 ? ' full' : (attendanceValue === 0.5 ? ' partial' : '');
+        const statusText = isSunday(month, day)
+          ? 'Chủ nhật nghỉ'
+          : (isHoliday(month, day)
+              ? 'Ngày lễ'
+              : (future
+                  ? 'Chưa tới ngày'
+                  : (attendanceValue >= 1 ? 'Đủ ngày' : (attendanceValue === 0.5 ? 'Nửa ngày' : 'Nghỉ'))));
+        const otValue = dayOtMap[day] ? fmtHalf(dayOtMap[day]) : '';
+
         const box = document.createElement('div');
         box.className = 'day' + (off ? ' off' : '') + (future ? ' future' : '') + stateClass;
         box.innerHTML = `
@@ -1146,16 +1266,57 @@
           </div>
           <div class="day-status">${statusText}</div>
           <div class="tag">${attendanceValue ? fmtHalf(attendanceValue) + ' công' : '0 công'}</div>
+          <div class="day-ot-wrap">
+            <div class="day-ot-label">OT</div>
+            <input
+              class="day-ot-input"
+              inputmode="decimal"
+              placeholder="0"
+              value="${otValue}"
+              ${off || future ? 'disabled' : ''}
+            />
+          </div>
         `;
+
+        const otInput = box.querySelector('.day-ot-input');
+        if(otInput){
+          otInput.addEventListener('click', (e) => e.stopPropagation());
+          otInput.addEventListener('input', (e) => {
+            const parsed = parseDecimalStepValue(e.target.value, 24);
+            if(parsed > 0){
+              dayOtMap[day] = parsed;
+              m.dayOtMap = dayOtMap;
+              e.target.value = fmtHalf(parsed);
+            }else{
+              delete dayOtMap[day];
+              e.target.value = '';
+            }
+            m.otHours = String(sumDayOtHours(m));
+            saveState();
+            renderAll();
+          });
+        }
+
         if(!off && !future){
           box.style.cursor = 'pointer';
           box.onclick = () => {
             const map = m.attendanceMap || {};
             const current = Number(map[day] || 0);
             const next = current === 0 ? 0.5 : (current === 0.5 ? 1 : 0);
-            if(next === 0) delete map[day]; else map[day] = next;
+
+            delete offDays[day];
+
+            if(next === 0){
+              delete map[day];
+              offDays[day] = 1;
+            }else{
+              map[day] = next;
+            }
+
             m.attendanceMap = map;
-            saveState(); renderAll();
+            m.offDays = offDays;
+            saveState();
+            renderAll();
           };
         }
         g.appendChild(box);
@@ -1672,6 +1833,9 @@
       const m = ensureMonthData(emp);
       if(!confirm('Xóa toàn bộ chấm công tháng này?')) return;
       m.attendanceMap = {};
+      m.offDays = {};
+      m.dayOtMap = {};
+      m.otHours = '0';
       saveState();
       renderAll();
     }
@@ -1766,6 +1930,7 @@
       if(!document.hidden) checkReminderNotifications().catch(console.error);
     });
 
+    startAutoAttendanceLoop();
     renderAll();
     startReminderNotificationLoop();
     setTimeout(() => {
