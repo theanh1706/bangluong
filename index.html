@@ -90,7 +90,12 @@
       text-align:center;
     }
     .day-ot-input:focus{border-color:#94a3b8;box-shadow:0 0 0 2px rgba(148,163,184,.16)}
-    .day.future .day-ot-input,.day.off .day-ot-input{background:#f8fafc}
+    .day.future .day-ot-input{background:#f8fafc}
+    .day-advance-note{margin-top:4px;padding:4px 6px;border-radius:10px;background:#fff7ed;color:#b45309;font-size:10px;font-weight:800;line-height:1.25}
+    .day-advance-note small{display:block;color:#92400e;font-size:10px;font-weight:700;opacity:.9}
+    .advance-summary-box{margin-top:12px;padding:14px;border-radius:16px;border:1px solid var(--line);background:#fff}
+    .advance-summary-box .title{font-weight:800}
+    .advance-summary-box .meta{margin-top:4px;font-size:12px;color:var(--muted)}
     .predict-box,.calc-box{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
     .mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .line{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line)}
@@ -245,12 +250,27 @@
                 <input id="allowanceInput" class="money" inputmode="numeric" readonly />
               </div>
               <div class="field">
-                <label>Ứng lương</label>
-                <input id="advanceInput" class="money" inputmode="numeric" placeholder="0" />
+                <label>Tổng ứng lương tháng</label>
+                <input id="advanceInput" class="money" inputmode="numeric" placeholder="0" readonly />
               </div>
               <div class="field">
                 <label>Thưởng thêm</label>
                 <input id="bonusInput" class="money" inputmode="numeric" placeholder="0" />
+              </div>
+            </div>
+
+            <div class="field-grid" style="margin-top:12px">
+              <div class="field">
+                <label>Ngày ứng lương</label>
+                <input id="advanceDateInput" type="date" />
+              </div>
+              <div class="field">
+                <label>Số tiền ứng</label>
+                <input id="advanceAmountInput" class="money" inputmode="numeric" placeholder="0" />
+              </div>
+              <div class="field" style="grid-column:1 / -1">
+                <label>Lưu ứng lương theo ngày</label>
+                <button class="btn secondary" id="addAdvanceBtn" style="height:42px">+ Lưu ứng lương</button>
               </div>
             </div>
 
@@ -266,34 +286,28 @@
                 <label>Số tiền bảo hiểm</label>
                 <input id="insuranceValueInput" class="money" inputmode="numeric" placeholder="0" />
               </div>
-              <div class="field">
-                <label>Thuế</label>
-                <select id="taxModeInput">
-                  <option value="total">Tổng tháng</option>
-                  <option value="daily">Theo ngày</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Số tiền thuế</label>
-                <input id="taxValueInput" class="money" inputmode="numeric" placeholder="0" />
-              </div>
             </div>
 
             <div class="mini-grid" style="margin-top:12px">
               <div class="field">
-                <label>OT (giờ) x1.5</label>
+                <label>Tổng OT (giờ) x1.5</label>
                 <input id="otHoursInput" inputmode="decimal" placeholder="0 hoặc 7,5" readonly />
+              </div>
+              <div class="field">
+                <label>Tiền OT tạm tính</label>
+                <input id="otAmountInput" class="money" inputmode="numeric" placeholder="0" readonly />
               </div>
               <div class="field">
                 <label>Dự đoán số ngày làm</label>
                 <input id="projectedDaysInput" inputmode="decimal" placeholder="0 hoặc 26,5" />
               </div>
-              <div class="field">
+              <div class="field" style="grid-column:1 / -1">
                 <label>Lưu dữ liệu</label>
                 <button class="btn green" id="saveBtn" style="height:42px">Lưu ngay</button>
               </div>
             </div>
             <div class="footer-note">Ô số tiền tự format dạng 1.000.000. Phụ cấp nội bộ cố định tối đa 1.000.000 và chia theo tỷ lệ ngày công trên mốc 26 công. Đạt 26 công được thưởng tự động 200.000. Dữ liệu tự lưu, tải lại trang không mất.</div>
+            <div id="advanceHistoryBox"></div>
           </div>
         </div>
       </div>
@@ -549,6 +563,7 @@
     const money = (v) => `${fmt(v)} ₫`;
     const clone = (x) => JSON.parse(JSON.stringify(x));
     const emptyExpenseDraft = () => ({ note:'', amount:'', date:'' });
+    const emptyAdvanceDraft = () => ({ amount:'', date:'' });
     const emptyReminderDraft = () => ({ title:'', note:'', date:'', time:'' });
     const REMINDER_NOTIFY_DEFAULT_TIME = '09:00';
     const REMINDER_CHECK_INTERVAL_MS = 30000;
@@ -566,6 +581,7 @@
         attendanceMap: autoAttendanceForCurrentMonth(date),
         offDays:{},
         dayOtMap:{},
+        advanceRecords:[],
         otHours:'0',
         bonus:'0',
         projectedDays:'',
@@ -582,8 +598,6 @@
         advance:'0',
         insuranceMode:'daily',
         insuranceValue:'0',
-        taxMode:'total',
-        taxValue:'0',
         monthlyData:{}
       };
     }
@@ -596,6 +610,7 @@
           raw.activeTab = raw.activeTab || 'salaryTab';
           raw.ui = raw.ui || {};
           raw.ui.expenseDraft = raw.ui.expenseDraft || emptyExpenseDraft();
+          raw.ui.advanceDraft = raw.ui.advanceDraft || emptyAdvanceDraft();
           raw.ui.reminderDraft = raw.ui.reminderDraft || emptyReminderDraft();
           raw.ui.reminderNotifications = raw.ui.reminderNotifications || { fired:{} };
           raw.ui.reminderNotifications.fired = raw.ui.reminderNotifications.fired || {};
@@ -605,7 +620,7 @@
         }
       }catch(e){}
       const emp = createEmployee('Nguyễn Văn A');
-      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1), activeTab:'salaryTab', reminders:[], ui:{ expenseDraft: emptyExpenseDraft(), reminderDraft: emptyReminderDraft(), reminderNotifications:{ fired:{} } } };
+      return { employees:[emp], activeEmployeeId:emp.id, currentMonth:new Date(new Date().getFullYear(), new Date().getMonth(), 1), activeTab:'salaryTab', reminders:[], ui:{ expenseDraft: emptyExpenseDraft(), advanceDraft: emptyAdvanceDraft(), reminderDraft: emptyReminderDraft(), reminderNotifications:{ fired:{} } } };
     }
 
     function saveState(){
@@ -652,6 +667,36 @@
     function getOffDays(monthData){
       if(!monthData.offDays || typeof monthData.offDays !== 'object') monthData.offDays = {};
       return monthData.offDays;
+    }
+
+    function getAdvanceRecords(monthData){
+      if(!Array.isArray(monthData.advanceRecords)) monthData.advanceRecords = [];
+      return monthData.advanceRecords;
+    }
+
+    function calcAdvanceTotal(monthData){
+      return getAdvanceRecords(monthData).reduce((sum, item) => sum + num(item.amount), 0);
+    }
+
+    function getAdvanceTotalForDay(monthData, day){
+      return getAdvanceRecords(monthData)
+        .filter(item => Number(item.day || 0) === Number(day))
+        .reduce((sum, item) => sum + num(item.amount), 0);
+    }
+
+    function migrateLegacyAdvance(emp, monthData){
+      if(emp.legacyAdvanceMigrated) return;
+      const legacyAmount = num(emp.advance);
+      if(legacyAmount > 0 && !getAdvanceRecords(monthData).length){
+        monthData.advanceRecords.push({
+          id: 'legacy-' + Date.now().toString(36),
+          day: 1,
+          date: `${state.currentMonth.getFullYear()}-${pad2(state.currentMonth.getMonth()+1)}-01`,
+          amount: String(legacyAmount),
+          note: 'Dữ liệu ứng lương cũ'
+        });
+      }
+      emp.legacyAdvanceMigrated = true;
     }
 
     function sumDayOtHours(monthData){
@@ -747,6 +792,14 @@
       if(!monthData.attendanceMap || typeof monthData.attendanceMap !== 'object') monthData.attendanceMap = {};
       if(!monthData.offDays || typeof monthData.offDays !== 'object') monthData.offDays = {};
       if(!monthData.dayOtMap || typeof monthData.dayOtMap !== 'object') monthData.dayOtMap = {};
+      if(!Array.isArray(monthData.advanceRecords)) monthData.advanceRecords = [];
+      monthData.advanceRecords = monthData.advanceRecords.map(item => ({
+        id: item.id || (Date.now().toString(36) + Math.random().toString(36).slice(2,7)),
+        day: Number(item.day || (String(item.date || '').slice(8,10))) || 0,
+        date: item.date || '',
+        amount: String(num(item.amount)),
+        note: item.note || ''
+      })).filter(item => item.amount && item.day > 0);
       if(monthData.projectedDays == null) monthData.projectedDays = '';
       if(monthData.otHours == null) monthData.otHours = '0';
       if(monthData.bonus == null) monthData.bonus = '0';
@@ -759,6 +812,8 @@
       const key = monthKey(state.currentMonth);
       if(!emp.monthlyData[key]) emp.monthlyData[key] = defaultMonthData(state.currentMonth);
       emp.monthlyData[key] = normalizeMonthData(emp.monthlyData[key]);
+      migrateLegacyAdvance(emp, emp.monthlyData[key]);
+      emp.advance = String(calcAdvanceTotal(emp.monthlyData[key]));
       if(withSync) syncAutoAttendanceForMonth(emp);
       return emp.monthlyData[key];
     }
@@ -775,6 +830,20 @@
       state.ui = state.ui || {};
       state.ui.expenseDraft = state.ui.expenseDraft || emptyExpenseDraft();
       return state.ui.expenseDraft;
+    }
+
+    function getAdvanceDraft(){
+      state.ui = state.ui || {};
+      state.ui.advanceDraft = state.ui.advanceDraft || emptyAdvanceDraft();
+      return state.ui.advanceDraft;
+    }
+
+    function getSuggestedAdvanceDate(){
+      const draft = getAdvanceDraft();
+      if(draft.date) return draft.date;
+      const t = today();
+      if(sameMonth(state.currentMonth, t)) return dateInputValue(t);
+      return dateInputValue(new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth(), 1));
     }
 
     function getSuggestedExpenseDate(){
@@ -1057,19 +1126,22 @@
       setMoneyInputBehavior('#baseSalaryInput', () => emp.baseSalary, v => { emp.baseSalary = v; saveState(); });
       qs('#allowanceInput').value = fmt(INTERNAL_ALLOWANCE_FULL);
       qs('#allowanceInput').readOnly = true;
-      setMoneyInputBehavior('#advanceInput', () => emp.advance, v => { emp.advance = v; saveState(); });
+      qs('#advanceInput').value = calcAdvanceTotal(m) ? fmt(calcAdvanceTotal(m)) : '';
+      qs('#advanceInput').readOnly = true;
+      qs('#advanceInput').title = 'Tổng ứng lương được tự cộng từ lịch sử ứng lương theo ngày';
       setMoneyInputBehavior('#bonusInput', () => m.bonus, v => { m.bonus = v; saveState(); });
       setMoneyInputBehavior('#insuranceValueInput', () => emp.insuranceValue, v => { emp.insuranceValue = v; saveState(); });
-      setMoneyInputBehavior('#taxValueInput', () => emp.taxValue, v => { emp.taxValue = v; saveState(); });
 
       qs('#insuranceModeInput').value = emp.insuranceMode;
       qs('#insuranceModeInput').onchange = e => { emp.insuranceMode = e.target.value; saveState(); renderAll(); };
-      qs('#taxModeInput').value = emp.taxMode;
-      qs('#taxModeInput').onchange = e => { emp.taxMode = e.target.value; saveState(); renderAll(); };
 
-      qs('#otHoursInput').value = fmtHalf(sumDayOtHours(m));
+      const c = calc(emp);
+      qs('#otHoursInput').value = fmtHalf(c.otHours);
       qs('#otHoursInput').readOnly = true;
       qs('#otHoursInput').title = 'OT tổng được tự cộng từ các ô OT trong từng ngày của lịch';
+      qs('#otAmountInput').value = c.otAmount ? fmt(c.otAmount) : '';
+      qs('#otAmountInput').readOnly = true;
+      qs('#otAmountInput').title = 'Tiền OT được tự tính từ tổng OT đã nhập trong từng ngày';
 
       qs('#projectedDaysInput').value = m.projectedDays ? fmtHalf(m.projectedDays) : '';
       qs('#projectedDaysInput').oninput = e => {
@@ -1078,6 +1150,79 @@
         e.target.value = m.projectedDays ? fmtHalf(m.projectedDays) : '';
         saveState(); renderAll();
       };
+
+      bindAdvanceInputs();
+      renderAdvanceHistory();
+    }
+
+    function bindAdvanceInputs(){
+      const draft = getAdvanceDraft();
+      const dateEl = qs('#advanceDateInput');
+      const amountEl = qs('#advanceAmountInput');
+      if(!dateEl || !amountEl) return;
+
+      if(!draft.date) draft.date = getSuggestedAdvanceDate();
+
+      dateEl.value = draft.date || '';
+      amountEl.value = draft.amount ? fmt(draft.amount) : '';
+
+      dateEl.oninput = (e) => {
+        draft.date = e.target.value;
+        saveState();
+      };
+
+      amountEl.oninput = (e) => {
+        const digits = onlyDigits(e.target.value);
+        draft.amount = digits;
+        e.target.value = digits ? fmt(digits) : '';
+        saveState();
+      };
+    }
+
+    function renderAdvanceHistory(){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      const box = qs('#advanceHistoryBox');
+      if(!box) return;
+
+      const records = clone(getAdvanceRecords(m)).sort((a,b) => {
+        const ad = `${a.date || ''} ${a.id || ''}`;
+        const bd = `${b.date || ''} ${b.id || ''}`;
+        return bd.localeCompare(ad);
+      });
+      const totalAdvance = calcAdvanceTotal(m);
+
+      if(!records.length){
+        box.innerHTML = `
+          <div class="empty-box" style="margin-top:12px">Chưa có lịch sử ứng lương trong tháng này.</div>
+        `;
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="advance-summary-box">
+          <div class="title">Lịch sử ứng lương tháng này</div>
+          <div class="meta">${records.length} lần ứng • Tổng đã ứng ${money(totalAdvance)}</div>
+        </div>
+        <div class="summary-list">
+          ${records.map(item => `
+            <div class="summary-line">
+              <div>
+                <strong>Ngày ${escapeHtml(item.date || '')}</strong>
+                <small>${item.note ? escapeHtml(item.note) : 'Đã ứng lương trong ngày này'}</small>
+              </div>
+              <div style="text-align:right">
+                <div>${money(num(item.amount))}</div>
+                <button class="expense-delete-btn" type="button" data-advance-id="${item.id}" style="margin-top:8px">Xóa</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      qsa('[data-advance-id]').forEach(btn => {
+        btn.onclick = () => deleteAdvanceRecord(btn.dataset.advanceId);
+      });
     }
 
     function bindExpenseInputs(){
@@ -1156,15 +1301,15 @@
       const otAmount = otPerHour * otHours;
       const manualBonus = num(m.bonus);
       const insurance = emp.insuranceMode === 'daily' ? num(emp.insuranceValue) * actualDays : num(emp.insuranceValue);
-      const tax = emp.taxMode === 'daily' ? num(emp.taxValue) * actualDays : num(emp.taxValue);
-      const advance = num(emp.advance);
+      const tax = 0;
+      const advance = calcAdvanceTotal(m);
       const actualBase = dailySalary * actualDays;
       const actualAllowance = INTERNAL_ALLOWANCE_FULL * Math.min(actualDays, FULL_WORK_DAYS_TARGET) / FULL_WORK_DAYS_TARGET;
       const actualAttendanceBonus = actualDays >= FULL_WORK_DAYS_TARGET ? PERFECT_ATTENDANCE_BONUS : 0;
       const actualNet = actualBase + actualAllowance + manualBonus + actualAttendanceBonus + otAmount - insurance - tax - advance;
 
       const pInsurance = emp.insuranceMode === 'daily' ? num(emp.insuranceValue) * projectedDays : num(emp.insuranceValue);
-      const pTax = emp.taxMode === 'daily' ? num(emp.taxValue) * projectedDays : num(emp.taxValue);
+      const pTax = 0;
       const projectedBase = dailySalary * projectedDays;
       const projectedAllowance = INTERNAL_ALLOWANCE_FULL * Math.min(projectedDays, FULL_WORK_DAYS_TARGET) / FULL_WORK_DAYS_TARGET;
       const projectedAttendanceBonus = projectedDays >= FULL_WORK_DAYS_TARGET ? PERFECT_ATTENDANCE_BONUS : 0;
@@ -1178,10 +1323,12 @@
         otHours,
         otPerHour,
         otAmount,
+        baseHourlySalary: dailySalary / 8,
         manualBonus,
         insurance,
         tax,
         advance,
+        advanceCount: getAdvanceRecords(m).length,
         actualBase,
         actualAllowance,
         actualAttendanceBonus,
@@ -1242,13 +1389,14 @@
         const future = isFutureDay(month, day);
         const offDays = getOffDays(m);
         const dayOtMap = getDayOtMap(m);
+        const dayAdvanceTotal = getAdvanceTotalForDay(m, day);
         const attendanceValue = Number((m.attendanceMap || {})[day] || 0);
         const tickText = attendanceValue >= 1 ? '1' : (attendanceValue === 0.5 ? '1/2' : '');
         const stateClass = attendanceValue >= 1 ? ' full' : (attendanceValue === 0.5 ? ' partial' : '');
         const statusText = isSunday(month, day)
-          ? 'Chủ nhật nghỉ'
+          ? 'Chủ nhật • nhập OT được'
           : (isHoliday(month, day)
-              ? 'Ngày lễ'
+              ? 'Ngày lễ • nhập OT được'
               : (future
                   ? 'Chưa tới ngày'
                   : (attendanceValue >= 1 ? 'Đủ ngày' : (attendanceValue === 0.5 ? 'Nửa ngày' : 'Nghỉ'))));
@@ -1266,6 +1414,7 @@
           </div>
           <div class="day-status">${statusText}</div>
           <div class="tag">${attendanceValue ? fmtHalf(attendanceValue) + ' công' : '0 công'}</div>
+          ${dayAdvanceTotal ? `<div class="day-advance-note"><small>Ứng lương</small>${fmt(dayAdvanceTotal)} ₫</div>` : ''}
           <div class="day-ot-wrap">
             <div class="day-ot-label">OT</div>
             <input
@@ -1273,7 +1422,7 @@
               inputmode="decimal"
               placeholder="0"
               value="${otValue}"
-              ${off || future ? 'disabled' : ''}
+              ${future ? 'disabled' : ''}
             />
           </div>
         `;
@@ -1325,7 +1474,6 @@
 
     function renderCalcBox(targetId, c, mode='actual'){
       const insurance = mode === 'actual' ? c.insurance : c.pInsurance;
-      const tax = mode === 'actual' ? c.tax : c.pTax;
       const base = mode === 'actual' ? c.actualBase : c.projectedBase;
       const days = mode === 'actual' ? c.actualDays : c.projectedDays;
       const allowance = mode === 'actual' ? c.actualAllowance : c.projectedAllowance;
@@ -1335,14 +1483,14 @@
       qs(targetId).innerHTML = `
         <div class="line"><div>${titleDays}<small>${fmtHalf(days)} ngày</small></div><div>${fmtHalf(days)}</div></div>
         <div class="line"><div>Lương ngày<small>Lương cơ bản / ${c.plannedDays} ngày công dự kiến</small></div><div>${money(c.dailySalary)}</div></div>
+        <div class="line"><div>Tổng OT đã nhập<small>Cộng từ OT từng ngày trong lịch</small></div><div>${fmtHalf(c.otHours)} giờ</div></div>
         <div class="line"><div class="plus">+ Lương theo ngày công<small>${fmt(c.dailySalary)} × ${fmtHalf(days)}</small></div><div class="plus">${money(base)}</div></div>
         <div class="line"><div class="plus">+ Phụ cấp nội bộ<small>1.000.000 × ${fmtHalf(Math.min(days, FULL_WORK_DAYS_TARGET))} / ${FULL_WORK_DAYS_TARGET}</small></div><div class="plus">${money(allowance)}</div></div>
         <div class="line"><div class="plus">+ Thưởng đạt 26 công<small>${days >= FULL_WORK_DAYS_TARGET ? 'Đạt mốc 26 công' : 'Chưa đạt mốc 26 công'}</small></div><div class="plus">${money(attendanceBonus)}</div></div>
         <div class="line"><div class="plus">+ Thưởng thêm</div><div class="plus">${money(c.manualBonus)}</div></div>
-        <div class="line"><div class="plus">+ OT x1.5<small>${fmt(c.dailySalary/8)} × 1.5 × ${c.otHours} giờ</small></div><div class="plus">${money(c.otAmount)}</div></div>
+        <div class="line"><div class="plus">+ Tiền OT x1.5<small>${fmt(c.baseHourlySalary)} × 1.5 × ${fmtHalf(c.otHours)} giờ</small></div><div class="plus">${money(c.otAmount)}</div></div>
         <div class="line"><div class="minus">- Bảo hiểm<small>${getActiveEmployee().insuranceMode === 'daily' ? fmt(num(getActiveEmployee().insuranceValue)) + ' × ' + fmtHalf(days) : 'Tổng tháng / theo cấu hình'}</small></div><div class="minus">${money(insurance)}</div></div>
-        <div class="line"><div class="minus">- Thuế<small>${getActiveEmployee().taxMode === 'daily' ? fmt(num(getActiveEmployee().taxValue)) + ' × ' + fmtHalf(days) : 'Tổng tháng / theo cấu hình'}</small></div><div class="minus">${money(tax)}</div></div>
-        <div class="line"><div class="minus">- Ứng lương</div><div class="minus">${money(c.advance)}</div></div>
+        <div class="line"><div class="minus">- Ứng lương<small>${c.advanceCount} lần ứng trong tháng</small></div><div class="minus">${money(c.advance)}</div></div>
         <div class="total"><div><div style="font-size:13px;opacity:.85">Tổng lương thực nhận</div><div style="font-size:12px;opacity:.65">Hiển thị đầy đủ cộng trừ trước khi ra kết quả</div></div><div style="font-size:22px;font-weight:800">${money(total)}</div></div>
       `;
     }
@@ -1473,7 +1621,8 @@
         <div class="summary-line"><div><strong>Ngày đã check</strong><small>Tiến độ chấm công hiện tại</small></div><div>${fmtHalf(c.actualDays)} ngày</div></div>
         <div class="summary-line"><div><strong>Ngày nhập dự đoán</strong><small>Số ngày dùng để tính lương dự đoán</small></div><div>${fmtHalf(c.projectedDays)} ngày</div></div>
         <div class="summary-line"><div><strong>Lương / ngày</strong><small>Lương cơ bản chia cho ngày công dự kiến</small></div><div>${money(c.dailySalary)}</div></div>
-        <div class="summary-line"><div><strong>OT quy đổi</strong><small>${c.otHours} giờ OT x1.5</small></div><div>${money(c.otAmount)}</div></div>
+        <div class="summary-line"><div><strong>Tổng OT đã nhập</strong><small>${fmtHalf(c.otHours)} giờ nhập từ từng ngày</small></div><div>${fmtHalf(c.otHours)} giờ</div></div>
+        <div class="summary-line"><div><strong>Tiền OT quy đổi</strong><small>${fmtHalf(c.otHours)} giờ OT x1.5</small></div><div>${money(c.otAmount)}</div></div>
         <div class="summary-line"><div><strong>Thưởng thêm hiện nhập</strong><small>Khoản thưởng tay ở Tab 1</small></div><div>${money(c.manualBonus)}</div></div>
       `;
 
@@ -1482,8 +1631,8 @@
         <div class="summary-line"><div><strong>Tổng chi tiêu</strong><small>Cộng tất cả khoản chi của tháng này</small></div><div>${money(expense.totalExpenses)}</div></div>
         <div class="summary-line"><div><strong>Lương dự đoán đang dùng</strong><small>Lấy trực tiếp từ Tab 1</small></div><div>${money(expense.projectedSalary)}</div></div>
         <div class="summary-line"><div><strong>Số dư còn lại</strong><small>Lương dự đoán trừ chi tiêu tháng</small></div><div class="${expense.remaining < 0 ? 'minus' : 'plus'}">${money(expense.remaining)}</div></div>
-        <div class="summary-line"><div><strong>Ứng lương đã nhập</strong><small>Khoản trừ cố định hiện tại</small></div><div>${money(c.advance)}</div></div>
-        <div class="summary-line"><div><strong>Bảo hiểm + Thuế</strong><small>Theo cấu hình hiện tại của nhân viên</small></div><div>${money((c.projectedDays ? c.pInsurance : c.insurance) + (c.projectedDays ? c.pTax : c.tax))}</div></div>
+        <div class="summary-line"><div><strong>Ứng lương đã nhập</strong><small>${c.advanceCount} lần ứng lương được lưu theo ngày</small></div><div>${money(c.advance)}</div></div>
+        <div class="summary-line"><div><strong>Bảo hiểm</strong><small>Theo cấu hình hiện tại của nhân viên</small></div><div>${money(c.projectedDays ? c.pInsurance : c.insurance)}</div></div>
       `;
 
       if(!reminder.upcoming.length){
@@ -1634,6 +1783,55 @@
       const removedIds = (state.reminders || []).filter(x => x.done).map(x => x.id);
       state.reminders = (state.reminders || []).filter(x => !x.done);
       removedIds.forEach(clearReminderNotificationFlag);
+      saveState();
+      renderAll();
+    }
+
+    function addAdvanceRecord(){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      const draft = getAdvanceDraft();
+      const amount = num(draft.amount);
+      const dateValue = draft.date || getSuggestedAdvanceDate();
+
+      if(!amount){
+        alert('Vui lòng nhập số tiền ứng lương.');
+        return;
+      }
+      if(!dateValue){
+        alert('Vui lòng chọn ngày ứng lương.');
+        return;
+      }
+
+      const picked = new Date(dateValue + 'T00:00:00');
+      if(!sameMonth(picked, state.currentMonth)){
+        alert('Ngày ứng lương phải nằm trong đúng tháng đang xem.');
+        return;
+      }
+
+      m.advanceRecords = getAdvanceRecords(m);
+      m.advanceRecords.unshift({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        day: picked.getDate(),
+        date: dateValue,
+        amount: String(amount),
+        note: ''
+      });
+      emp.advance = String(calcAdvanceTotal(m));
+      state.ui.advanceDraft = emptyAdvanceDraft();
+      state.ui.advanceDraft.date = getSuggestedAdvanceDate();
+      saveState();
+      renderAll();
+    }
+
+    function deleteAdvanceRecord(advanceId){
+      const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
+      const item = getAdvanceRecords(m).find(x => x.id === advanceId);
+      if(!item) return;
+      if(!confirm(`Xóa lần ứng lương ngày ${item.date} với số tiền ${money(num(item.amount))}?`)) return;
+      m.advanceRecords = getAdvanceRecords(m).filter(x => x.id !== advanceId);
+      emp.advance = String(calcAdvanceTotal(m));
       saveState();
       renderAll();
     }
@@ -1842,7 +2040,16 @@
 
     function exportExcel(){
       const emp = getActiveEmployee();
+      const m = ensureMonthData(emp);
       const c = calc(emp);
+      const advanceRows = getAdvanceRecords(m).length
+        ? `
+          <tr><th colspan="2">Chi tiết ứng lương theo ngày</th></tr>
+          ${getAdvanceRecords(m).sort((a,b) => (a.date || '').localeCompare(b.date || '')).map(item => `
+            <tr><td>${escapeHtml(item.date || '')}</td><td>${num(item.amount)}</td></tr>
+          `).join('')}
+        `
+        : '<tr><th colspan="2">Chi tiết ứng lương theo ngày</th></tr><tr><td colspan="2">Không có dữ liệu</td></tr>';
       const html = `
         <table border="1">
           <tr><th colspan="2">Bảng lương ${escapeHtml(emp.name)}</th></tr>
@@ -1855,14 +2062,16 @@
           <tr><td>Phụ cấp nội bộ theo 26 công</td><td>${Math.round(c.actualAllowance)}</td></tr>
           <tr><td>Thưởng đạt 26 công</td><td>${Math.round(c.actualAttendanceBonus)}</td></tr>
           <tr><td>Thưởng thêm</td><td>${c.manualBonus}</td></tr>
-          <tr><td>OT</td><td>${Math.round(c.otAmount)}</td></tr>
+          <tr><td>Tổng OT đã nhập (giờ)</td><td>${c.otHours}</td></tr>
+          <tr><td>Tiền OT</td><td>${Math.round(c.otAmount)}</td></tr>
           <tr><td>Bảo hiểm</td><td>${Math.round(c.insurance)}</td></tr>
-          <tr><td>Thuế</td><td>${Math.round(c.tax)}</td></tr>
           <tr><td>Ứng lương</td><td>${c.advance}</td></tr>
+          <tr><td>Số lần ứng lương</td><td>${c.advanceCount}</td></tr>
           <tr><td>Thực nhận</td><td>${Math.round(c.actualNet)}</td></tr>
           <tr><td>Lương dự đoán</td><td>${Math.round(calcExpenseSummary(emp).projectedSalary)}</td></tr>
           <tr><td>Tổng chi tiêu tháng</td><td>${Math.round(calcExpenseSummary(emp).totalExpenses)}</td></tr>
           <tr><td>Tiền còn lại dự kiến</td><td>${Math.round(calcExpenseSummary(emp).remaining)}</td></tr>
+          ${advanceRows}
         </table>`;
       const blob = new Blob([html], {type:'application/vnd.ms-excel'});
       const a = document.createElement('a');
@@ -1891,6 +2100,7 @@
     qs('#expenseNextMonthBtn').onclick = () => changeMonth(1);
     qs('#overviewPrevMonthBtn').onclick = () => changeMonth(-1);
     qs('#overviewNextMonthBtn').onclick = () => changeMonth(1);
+    qs('#addAdvanceBtn').onclick = addAdvanceRecord;
     qs('#addExpenseBtn').onclick = addExpense;
     qs('#calcRemainingBtn').onclick = calculateRemaining;
     qs('#clearExpensesBtn').onclick = clearExpenses;
