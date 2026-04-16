@@ -1656,7 +1656,7 @@
       qs('#overviewQuickList').innerHTML = `
         <div class="summary-line"><div><strong>Tiến độ công tháng</strong><small>${fmtHalf(c.actualDays)} / ${fmtHalf(c.plannedDays)} ngày</small></div><div>${fmt(workProgress)}%</div></div>
         <div class="summary-line"><div><strong>Còn thiếu để đủ kế hoạch</strong><small>Phần ngày công chưa check đủ</small></div><div>${fmtHalf(remainingDays)} ngày</div></div>
-        <div class="summary-line"><div><strong>Chênh lệch dự đoán - thực tế</strong><small>Lương dự đoán trừ lương đã check hiện tại</small></div><div>${money(c.projectedNet - c.actualNet)}</div></div>
+        <div class="summary-line"><div><strong>Tổng ứng lương tháng</strong><small>${c.advanceCount} lần ứng lương đã lưu theo ngày</small></div><div>${money(c.advance)}</div></div>
         <div class="summary-line"><div><strong>Tỷ lệ chi tiêu / lương dự đoán</strong><small>Giúp nhìn nhanh mức tiêu trong tháng</small></div><div>${c.projectedNet > 0 ? fmt((expense.totalExpenses / c.projectedNet) * 100) : 0}%</div></div>
         <div class="summary-line"><div><strong>Đánh giá nhanh</strong><small>${expense.remaining < 0 ? 'Chi tiêu đang vượt lương dự đoán' : 'Tạm còn trong mức an toàn của tháng'}</small></div><div class="${expense.remaining < 0 ? 'minus' : 'plus'}">${expense.remaining < 0 ? 'Cần siết chi' : 'Ổn'}</div></div>
       `;
