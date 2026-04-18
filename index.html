@@ -1291,7 +1291,8 @@
       const month = state.currentMonth;
       const m = ensureMonthData(emp);
       const plannedDays = workingDaysInMonth(month);
-      const dailySalary = plannedDays ? num(emp.baseSalary) / plannedDays : 0;
+      const salaryStandardDays = FULL_WORK_DAYS_TARGET;
+      const dailySalary = salaryStandardDays ? num(emp.baseSalary) / salaryStandardDays : 0;
       const attendanceMap = m.attendanceMap || {};
       const actualDays = Object.values(attendanceMap).reduce((sum, value) => sum + Number(value || 0), 0);
       const projectedDays = parseHalfDayValue(m.projectedDays || 0, plannedDays) || 0;
@@ -1317,6 +1318,7 @@
 
       return {
         plannedDays,
+        salaryStandardDays,
         dailySalary,
         actualDays,
         projectedDays,
@@ -1482,7 +1484,7 @@
       const titleDays = mode === 'actual' ? 'Số ngày đã check' : 'Số ngày nhập dự đoán';
       qs(targetId).innerHTML = `
         <div class="line"><div>${titleDays}<small>${fmtHalf(days)} ngày</small></div><div>${fmtHalf(days)}</div></div>
-        <div class="line"><div>Lương ngày<small>Lương cơ bản / ${c.plannedDays} ngày công dự kiến</small></div><div>${money(c.dailySalary)}</div></div>
+        <div class="line"><div>Lương ngày<small>Lương cơ bản / ${c.salaryStandardDays} ngày công chuẩn</small></div><div>${money(c.dailySalary)}</div></div>
         <div class="line"><div>Tổng OT đã nhập<small>Cộng từ OT từng ngày trong lịch</small></div><div>${fmtHalf(c.otHours)} giờ</div></div>
         <div class="line"><div class="plus">+ Lương theo ngày công<small>${fmt(c.dailySalary)} × ${fmtHalf(days)}</small></div><div class="plus">${money(base)}</div></div>
         <div class="line"><div class="plus">+ Phụ cấp nội bộ<small>1.000.000 × ${fmtHalf(Math.min(days, FULL_WORK_DAYS_TARGET))} / ${FULL_WORK_DAYS_TARGET}</small></div><div class="plus">${money(allowance)}</div></div>
@@ -1620,7 +1622,7 @@
         <div class="summary-line"><div><strong>Ngày công dự kiến</strong><small>Số ngày làm chuẩn của tháng đang chọn</small></div><div>${fmtHalf(c.plannedDays)} ngày</div></div>
         <div class="summary-line"><div><strong>Ngày đã check</strong><small>Tiến độ chấm công hiện tại</small></div><div>${fmtHalf(c.actualDays)} ngày</div></div>
         <div class="summary-line"><div><strong>Ngày nhập dự đoán</strong><small>Số ngày dùng để tính lương dự đoán</small></div><div>${fmtHalf(c.projectedDays)} ngày</div></div>
-        <div class="summary-line"><div><strong>Lương / ngày</strong><small>Lương cơ bản chia cho ngày công dự kiến</small></div><div>${money(c.dailySalary)}</div></div>
+        <div class="summary-line"><div><strong>Lương / ngày</strong><small>Lương cơ bản chia cho 26 ngày công chuẩn</small></div><div>${money(c.dailySalary)}</div></div>
         <div class="summary-line"><div><strong>Tổng OT đã nhập</strong><small>${fmtHalf(c.otHours)} giờ nhập từ từng ngày</small></div><div>${fmtHalf(c.otHours)} giờ</div></div>
         <div class="summary-line"><div><strong>Tiền OT quy đổi</strong><small>${fmtHalf(c.otHours)} giờ OT x1.5</small></div><div>${money(c.otAmount)}</div></div>
         <div class="summary-line"><div><strong>Thưởng thêm hiện nhập</strong><small>Khoản thưởng tay ở Tab 1</small></div><div>${money(c.manualBonus)}</div></div>
